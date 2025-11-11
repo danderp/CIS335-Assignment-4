@@ -120,6 +120,7 @@ public class CIS335_Ass4 {
         }
 
         //start doing format checking
+        //this sucks badly right now
         for (int i=0; i<line_count; i++) {
             //check if the symbol is in the table, if it isnt produce an error
             for (int j=0; j<opTable.length; j++) {
@@ -140,4 +141,5 @@ public class CIS335_Ass4 {
         }
     }
 }
+
 
