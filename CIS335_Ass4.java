@@ -210,26 +210,28 @@ public class CIS335_Ass4 {
                     if (opcode.isEmpty()) {
                         continue;
                     }
-                    int j = 0;
+                    int j;
                     if (!file_data[i][0].isEmpty()) {
                         if (file_data[i][0].charAt(0) == '.') {
                             continue;
                         }
                     }
                     for (j = 0; j < opTable.length; j++) {
+                        if (opcode.charAt(0) == '+') {
+                            opcode = opcode.substring(1);
+                            location_counter += 1;
+                        }
                         //if the opcode at line i is equal to a mnemonic in the table
                         if (opTable[j].compareTo(opcode) == 0) {
                             if (opFormats[j] == 1) {
                                 location_counter += 1;
                             }
-                            if (opFormats[j] == 2) {
+                            else if (opFormats[j] == 2) {
                                 location_counter += 2;
                             }
-                            if (opFormats[j] == 3) {
-                                if (opcode.charAt(0) == '+') {
-                                    location_counter += 4;
-                                }
-                                location_counter += 3;
+                            else if (opFormats[j] == 3) {
+
+                                    location_counter += 3;
                             } else {
                                 System.out.printf("Error: Format not available for %s\n", opcode);
                                 System.exit(402);
