@@ -152,6 +152,22 @@ public class CIS335_Ass4 {
                 for (int j=0; j<opTable.length; j++) {
                     //if the opcode at line i is equal to a mnemonic in the table
                     if (opTable[j].compareTo(opcode) == 0) {
+                        if (opFormats[j] == 1) {
+                            location_counter += 1;
+                        }
+                        if (opFormats[j] == 2) {
+                            location_counter += 2;
+                        }
+                        if (opFormats[j] == 3) {
+                            if (opcode.charAt(0) == '+') {
+                                location_counter += 4;
+                            }
+                            location_counter += 3;
+                        }
+
+                        else {
+                            System.out.printf("Error: Format not available for %s", opcode);
+                        }
                         break;
                     }
                 }
