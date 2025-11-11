@@ -1,5 +1,7 @@
+import javax.lang.model.type.NullType;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -10,9 +12,17 @@ public class CIS335_Ass4 {
         try {
             PrintWriter intermediate_writer = new PrintWriter("intermediate_file.txt", StandardCharsets.UTF_8);
             String file_name = args[0];
+            //get line count of file
+            BufferedReader reader = new BufferedReader(new FileReader(args[0]));
+            int lines = 0;
+            while (reader.readLine() != null) lines++;
+            reader.close();
+
+            boolean base = false;
             int line_count = 0;
             int location_counter = 0;
-            String[][] file_data = new String[100][10];
+            DecimalFormat location_format = new DecimalFormat("0000");
+            String[][] file_data = new String[lines][10];
             ArrayList<String> SYMTAB = new ArrayList<>();
             ArrayList<Integer> ADDRTAB = new ArrayList<>();
             String[] opTable = {
@@ -95,12 +105,9 @@ public class CIS335_Ass4 {
                     if (line.length() >= 14) {
                         operand = line.substring(14).trim();
                     }
-                    System.out.printf("%s\t", label);
-                    System.out.printf("%s\t", opcode);
-                    System.out.printf("%s\n", operand);
                     if (label.contains(".")) {
                         //comment, so just store nothing in that data spot for now (later might make this not store anything into the array at all)
-                        String[] line_data = {"", "", ""};
+                        String[] line_data = {label, opcode, operand};
                         file_data[line_count] = line_data;
                     } else {
                         //not comment, put stored data in to the file data array
@@ -113,9 +120,10 @@ public class CIS335_Ass4 {
                                 SYMTAB.add(label);
                             } else {
                                 System.out.printf("Error: Duplicate symbol %s\n", label);
-                                break;
+                                System.exit(403);
                             }
                         }
+
                     }
                     line_count++;
                 }
@@ -125,34 +133,90 @@ public class CIS335_Ass4 {
 
             //start doing format checking
             for (int i=0; i<line_count; i++) {
-                intermediate_writer.printf("%s\t%s\t%s\t%s\n", location_counter, file_data[i][0], file_data[i][1], file_data[i][2]);
+                if (!file_data[i][0].isEmpty()) {
+                    if (file_data[i][0].charAt(0) == '.') {
+                        intermediate_writer.printf("%s\t\t%s%s\n", file_data[i][0], file_data[i][1], file_data[i][2]);
+                    } else {
+                        ADDRTAB.add(location_counter);
+                        if ((location_counter - 1000) < 0) {
+                            intermediate_writer.printf("%s\t\t", location_counter);
+                        } else {
+                            intermediate_writer.printf("%s\t", location_counter);
+                        }
+                        if (file_data[i][0].length() < 4) {
+                            intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                        } else {
+                            intermediate_writer.printf("%s\t", file_data[i][0]);
+                        }
+                        if (file_data[i][1].length() < 4) {
+                            intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                        } else {
+                            intermediate_writer.printf("%s\t", file_data[i][1]);
+                        }
+                        if (file_data[i][2].length() < 4) {
+                            intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                        } else {
+                            intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                        }
+                    }
+                }
+                else {
+                    if ((location_counter - 1000) < 0) {
+                    intermediate_writer.printf("%s\t\t", location_counter);
+                    } else {
+                    intermediate_writer.printf("%s\t", location_counter);
+                    }
+                    if (file_data[i][0].length() < 4) {
+                        intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                    } else {
+                        intermediate_writer.printf("%s\t", file_data[i][0]);
+                    }
+                    if (file_data[i][1].length() < 4) {
+                        intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                    } else {
+                        intermediate_writer.printf("%s\t", file_data[i][1]);
+                    }
+                    if (file_data[i][2].length() < 4) {
+                        intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                    } else {
+                        intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                    }
+                }
+
                 String opcode = file_data[i][1];
                 if (opcode.compareTo("START") == 0) {
-                    System.out.printf("START found at index %d\n", i);
                     location_counter = Integer.parseInt(file_data[i][2]);
                 }
                 else if (opcode.compareTo("BYTE") == 0) {
-                    System.out.printf("BYTE found at index %d\n", i);
                     location_counter += 1;
                 }
                 else if (opcode.compareTo("WORD") == 0) {
-                    System.out.printf("WORD found at index %d\n", i);
                     location_counter += 3;
                 }
                 else if (opcode.compareTo("RESB") == 0) {
-                    System.out.printf("RESB found at index %d\n", i);
                     location_counter += Integer.parseInt(file_data[i][2]);
                 }
                 else if (opcode.compareTo("RESW") == 0) {
-                    System.out.printf("RESW found at index %d\n", i);
                     location_counter += Integer.parseInt(file_data[i][2]) * 3;
+                }
+                else if (opcode.compareTo("END") == 0) {
+                }
+                else if (opcode.compareTo("BASE") == 0) {
+                    base = true;
+                }
+                else if (opcode.compareTo("NOBASE") == 0) {
                 }
                 else {
                     if (opcode.isEmpty()) {
                         continue;
                     }
-                    System.out.printf("This line at index %d is: %s, %s, %s\n", i, file_data[i][0], opcode, file_data[i][2]);
-                    for (int j=0; j<opTable.length; j++) {
+                    int j = 0;
+                    if (!file_data[i][0].isEmpty()) {
+                        if (file_data[i][0].charAt(0) == '.') {
+                            continue;
+                        }
+                    }
+                    for (j = 0; j < opTable.length; j++) {
                         //if the opcode at line i is equal to a mnemonic in the table
                         if (opTable[j].compareTo(opcode) == 0) {
                             if (opFormats[j] == 1) {
@@ -166,17 +230,31 @@ public class CIS335_Ass4 {
                                     location_counter += 4;
                                 }
                                 location_counter += 3;
-                            }
-
-                            else {
+                            } else {
                                 System.out.printf("Error: Format not available for %s\n", opcode);
+                                System.exit(402);
                             }
                             break;
                         }
                     }
+                    if (j == opTable.length) {
+                        System.out.printf("OPCODE not found in table: %s", opcode);
+                        System.exit(1);
+                    }
                 }
             }
             intermediate_writer.close();
+            /*
+            System.out.printf("Symbol Table: (size %d)\n", SYMTAB.size());
+            for (int i=0; i< SYMTAB.size(); i++) {
+                System.out.println(SYMTAB.get(i));
+            }
+            System.out.println();
+            System.out.printf("Address Table: (size %d)\n", ADDRTAB.size());
+            for (int i=0; i< ADDRTAB.size(); i++) {
+                System.out.println(ADDRTAB.get(i));
+            }
+             */
         } catch (FileNotFoundException e) {
             System.out.print("Error: File not found\n");
         } catch (UnsupportedEncodingException e) {
@@ -184,7 +262,6 @@ public class CIS335_Ass4 {
         } catch (IOException e) {
             System.out.print("Error: IOException\n");
         }
-
     }
 }
 
