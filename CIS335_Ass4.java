@@ -9,59 +9,60 @@ public class CIS335_Ass4 {
     public static void main(String[] args) {
         String file_name = args[0];
         int line_count = 0;
+        int location_counter = 0;
         String[][] file_data = new String[100][10];
         ArrayList<String> SYMTAB = new ArrayList<>();
         ArrayList<Integer> ADDRTAB = new ArrayList<>();
         String[] opTable = {
-            "ADD", "ADDF", "ADDR", "AND",
-            "CLEAR", "COMP", "COMPF", "COMPR",
-            "DIV", "DIVF", "DIVR", "FIX",
-            "FLOAT", "HIO", "J", "JEQ",
-            "JGT", "JLT", "JSUB", "LDA",
-            "LDB", "LDCH", "LDF", "LDL",
-            "LDS", "LDT", "LDX", "LPS",
-            "MUL", "MULF", "MULR", "NORM",
-            "OR", "RD", "RMO", "RSUB",
-            "SHIFTL", "SHIFTR", "SIO", "SSK",
-            "STA", "STB", "STCH", "STF",
-            "STI", "STL", "STS", "STSW",
-            "STT", "STX", "SUB", "SUBF",
-            "SUBR", "SVC", "TD", "TIO",
-            "TIX", "TIXR", "WD"
+                "ADD", "ADDF", "ADDR", "AND",
+                "CLEAR", "COMP", "COMPF", "COMPR",
+                "DIV", "DIVF", "DIVR", "FIX",
+                "FLOAT", "HIO", "J", "JEQ",
+                "JGT", "JLT", "JSUB", "LDA",
+                "LDB", "LDCH", "LDF", "LDL",
+                "LDS", "LDT", "LDX", "LPS",
+                "MUL", "MULF", "MULR", "NORM",
+                "OR", "RD", "RMO", "RSUB",
+                "SHIFTL", "SHIFTR", "SIO", "SSK",
+                "STA", "STB", "STCH", "STF",
+                "STI", "STL", "STS", "STSW",
+                "STT", "STX", "SUB", "SUBF",
+                "SUBR", "SVC", "TD", "TIO",
+                "TIX", "TIXR", "WD"
         };
         String[] opKeys = {
-            "18", "58", "90", "40",
-            "B4", "28", "88", "A0",
-            "24", "64", "9C", "C4",
-            "C0", "F4", "3C", "30",
-            "34", "38", "48", "00",
-            "68", "50", "70", "08",
-            "6C", "74", "04", "D0",
-            "20", "60", "98", "C8",
-            "44", "D8", "AC", "4C",
-            "A4", "A8", "F0", "EC",
-            "0C", "78", "54", "80",
-            "D4", "14", "7C", "E8",
-            "84", "10", "1C", "5C",
-            "94", "B0", "E0", "F8",
-            "2C", "B8", "DC"
+                "18", "58", "90", "40",
+                "B4", "28", "88", "A0",
+                "24", "64", "9C", "C4",
+                "C0", "F4", "3C", "30",
+                "34", "38", "48", "00",
+                "68", "50", "70", "08",
+                "6C", "74", "04", "D0",
+                "20", "60", "98", "C8",
+                "44", "D8", "AC", "4C",
+                "A4", "A8", "F0", "EC",
+                "0C", "78", "54", "80",
+                "D4", "14", "7C", "E8",
+                "84", "10", "1C", "5C",
+                "94", "B0", "E0", "F8",
+                "2C", "B8", "DC"
         };
         int[] opFormats = {
-            3, 3, 2, 3,
-            2, 3, 3, 2,
-            3, 3, 2, 1,
-            1, 1, 3, 3,
-            3, 3, 3, 3,
-            3, 3, 3, 3,
-            3, 3, 3, 3,
-            3, 3, 2, 1,
-            3, 3, 2, 3,
-            2, 2, 1, 3,
-            3, 3, 3, 3,
-            3, 3, 3, 3,
-            3, 3, 3, 3,
-            2, 2, 3, 1,
-            3, 2, 3
+                3, 3, 2, 3,
+                2, 3, 3, 2,
+                3, 3, 2, 1,
+                1, 1, 3, 3,
+                3, 3, 3, 3,
+                3, 3, 3, 3,
+                3, 3, 3, 3,
+                3, 3, 2, 1,
+                3, 3, 2, 3,
+                2, 2, 1, 3,
+                3, 3, 3, 3,
+                3, 3, 3, 3,
+                3, 3, 3, 3,
+                2, 2, 3, 1,
+                3, 2, 3
         };
         int[] opExpectedArgs = {
 
@@ -105,14 +106,13 @@ public class CIS335_Ass4 {
                     file_data[line_count] = line_data;
 
                     //put symbol into table if it isnt empty and its not already in there
-                    if (label.isEmpty()) {
-                        continue;
-                    }
-                    if (!SYMTAB.contains(label)) {
-                        SYMTAB.add(label);
-                    } else {
-                        System.out.printf("Error: Duplicate symbol %s\n", label);
-                        break;
+                    if (!label.isEmpty()) {
+                        if (!SYMTAB.contains(label)) {
+                            SYMTAB.add(label);
+                        } else {
+                            System.out.printf("Error: Duplicate symbol %s\n", label);
+                            break;
+                        }
                     }
                 }
                 line_count++;
@@ -122,22 +122,38 @@ public class CIS335_Ass4 {
         }
 
         //start doing format checking
-        //this sucks badly right now
         for (int i=0; i<line_count; i++) {
-            //check if the symbol is in the table, if it isnt produce an error
-            for (int j=0; j<opTable.length; j++) {
-                if (file_data[i][1].isEmpty()) {
+            String opcode = file_data[i][1];
+            if (opcode.compareTo("START") == 0) {
+                System.out.printf("START found at index %d\n", i);
+                location_counter = Integer.parseInt(file_data[i][2]);
+            }
+            else if (opcode.compareTo("BYTE") == 0) {
+                System.out.printf("BYTE found at index %d\n", i);
+                location_counter += 1;
+            }
+            else if (opcode.compareTo("WORD") == 0) {
+                System.out.printf("WORD found at index %d\n", i);
+                location_counter += 3;
+            }
+            else if (opcode.compareTo("RESB") == 0) {
+                System.out.printf("RESB found at index %d\n", i);
+                location_counter += Integer.parseInt(file_data[i][2]);
+            }
+            else if (opcode.compareTo("RESW") == 0) {
+                System.out.printf("RESW found at index %d\n", i);
+                location_counter += Integer.parseInt(file_data[i][2]) * 3;
+            }
+            else {
+                if (opcode.isEmpty()) {
                     continue;
                 }
-                //if the opcode at line i is equal to a mnemonic in the table
-                if (opTable[j].compareTo(file_data[i][1]) == 0) {
-                    System.out.printf("Opcode %s found in Opcode Table at index %d\n", file_data[i][1], j);
-                    //go to next line's opcode
-                    break;
-                }
-                else {
-                    System.out.printf("Opcode %s not found anywhere in Opcode Table\n", file_data[i][1]);
-                    break;
+                System.out.printf("This line at index %d is: %s, %s, %s\n", i, file_data[i][0], opcode, file_data[i][2]);
+                for (int j=0; j<opTable.length; j++) {
+                    //if the opcode at line i is equal to a mnemonic in the table
+                    if (opTable[j].compareTo(opcode) == 0) {
+                        break;
+                    }
                 }
             }
         }
