@@ -156,6 +156,7 @@ public class CIS335_Ass4 {
                     }
                 }
             }
+            System.out.printf("Location counter is currently %d: \n\n", location_counter);
         }
     }
 }
