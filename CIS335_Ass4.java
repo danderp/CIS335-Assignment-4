@@ -169,7 +169,7 @@ public class CIS335_Ass4 {
                             }
 
                             else {
-                                System.out.printf("Error: Format not available for %s", opcode);
+                                System.out.printf("Error: Format not available for %s\n", opcode);
                             }
                             break;
                         }
@@ -178,11 +178,11 @@ public class CIS335_Ass4 {
             }
             intermediate_writer.close();
         } catch (FileNotFoundException e) {
-            System.out.print("ok\n");
+            System.out.print("Error: File not found\n");
         } catch (UnsupportedEncodingException e) {
-            System.out.print("ok2\n");
+            System.out.print("Error: Encoding format not supported\n");
         } catch (IOException e) {
-            System.out.print("ok3\n");
+            System.out.print("Error: IOException\n");
         }
 
     }
