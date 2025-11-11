@@ -5,7 +5,7 @@ import java.util.Scanner;
 
 
 // Louis was here
-public class CIS340_Ass4 {
+public class CIS335_Ass4 {
     public static void main(String[] args) {
         String file_name = args[0];
         int line_count = 0;
@@ -93,3 +93,4 @@ public class CIS340_Ass4 {
         }
     }
 }
+
