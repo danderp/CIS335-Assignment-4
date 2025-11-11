@@ -76,7 +76,7 @@ public class CIS335_Ass4 {
                 String opcode = "";
                 String operand = "";
                 //split line into LABEL | OPCODE | OPERAND format
-                //line 1 would file_data[1][Label, Opcode, Operand]
+                //line 1 would file_data[0][Label, Opcode, Operand]
                 if (line.length() >= 8) {
                     label = line.substring(0, 7).trim();
                 } else {
@@ -140,3 +140,4 @@ public class CIS335_Ass4 {
         }
     }
 }
+
