@@ -1,4 +1,3 @@
-import javax.lang.model.type.NullType;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
@@ -8,6 +7,87 @@ import java.util.Scanner;
 //test 2
 
 public class CIS335_Ass4 {
+    public static int getKeyIndex(String mnemonic, String[] mnemonicTable) {
+        for (int i = 0; i<mnemonicTable.length; i++) {
+            if (mnemonic.compareTo(mnemonicTable[i]) == 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    public static String opcodeCreation(String hexKey, String binaryFlags, int decimalAddress, int format) {
+        String binaryOpcode = "";
+        StringBuilder opcodeBuilder = new StringBuilder();
+        //convert opkey to binary
+        int intermedKey = Integer.parseInt(hexKey, 16);
+        int intermed_len = Integer.toString(intermedKey).length() * 4;
+        StringBuilder binaryKeyBuilder = new StringBuilder();
+        String binaryKey = Integer.toBinaryString(intermedKey);
+
+        if (intermed_len - binaryKey.length() > 0) {
+            for (int i = 0; i<intermed_len - binaryKey.length(); i++) {
+                //add missing zeroes to the front
+                binaryKeyBuilder.append("0");
+            }
+        }
+        binaryKeyBuilder.append(Integer.toBinaryString(intermedKey));
+        binaryKey = binaryKeyBuilder.toString().substring(0,6);
+
+
+        //convert address to binary
+
+        int num_figs = Integer.toString(decimalAddress).length() * 4;
+
+        //lol
+        if (format == 1) {
+            num_figs = 0;
+        }
+        if (format == 2) {
+            num_figs = 0;
+        }
+        if (format == 3) {
+            num_figs = 12;
+        }
+        if (format == 5) {
+            num_figs = 20;
+        }
+        if (format == 6) {
+            num_figs = 20;
+        }
+        if (format == 7) {
+            num_figs = 12;
+        }
+        if (format == 8) {
+            num_figs = 12;
+        }
+        if (format == 9) {
+            num_figs = 12;
+        }
+
+        String bin_num = Integer.toBinaryString(decimalAddress);
+        int bin_len = bin_num.length();
+        StringBuilder binaryAddress = new StringBuilder();
+        if (num_figs - bin_len > 0) {
+            for (int i = 0; i< num_figs - bin_len; i++) {
+                //add missing zeroes to the front
+                binaryAddress.append("0");
+            }
+        }
+        //add the address
+        binaryAddress.append(bin_num);
+
+        opcodeBuilder.append(binaryKey);
+        opcodeBuilder.append(binaryFlags);
+        opcodeBuilder.append(binaryAddress);
+        String opcode = opcodeBuilder.toString();
+
+
+        int opcodeint = Integer.parseInt(opcode, 2);
+        //int op_len = Integer.toString(opcodeint).length() * 4;
+
+        opcode = Integer.toHexString(opcodeint);
+        return opcode;
+    }
     public static void main(String[] args) {
         try {
             PrintWriter intermediate_writer = new PrintWriter("intermediate_file.txt", StandardCharsets.UTF_8);
@@ -137,11 +217,70 @@ public class CIS335_Ass4 {
                     if (file_data[i][0].charAt(0) == '.') {
                         intermediate_writer.printf("%s\t\t%s%s\n", file_data[i][0], file_data[i][1], file_data[i][2]);
                     } else {
-                        ADDRTAB.add(location_counter);
-                        if ((location_counter - 1000) < 0) {
-                            intermediate_writer.printf("%s\t\t", location_counter);
+                        if (i == line_count-1) {
+                            if (file_data[i][0].length() < 4) {
+                                intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                            } else {
+                                intermediate_writer.printf("%s\t", file_data[i][0]);
+                            }
+                            if (file_data[i][1].length() < 4) {
+                                intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                            } else {
+                                intermediate_writer.printf("%s\t", file_data[i][1]);
+                            }
+                            if (file_data[i][2].length() < 4) {
+                                intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                            } else {
+                                intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                            }
                         } else {
-                            intermediate_writer.printf("%s\t", location_counter);
+                            ADDRTAB.add(location_counter);
+                            if ((location_counter - 1000) < 0) {
+                                intermediate_writer.printf("%s\t\t", Integer.toHexString(location_counter));
+                            } else {
+                                intermediate_writer.printf("%s\t", Integer.toHexString(location_counter));
+                            }
+                            if (file_data[i][0].length() < 4) {
+                                intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                            } else {
+                                intermediate_writer.printf("%s\t", file_data[i][0]);
+                            }
+                            if (file_data[i][1].length() < 4) {
+                                intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                            } else {
+                                intermediate_writer.printf("%s\t", file_data[i][1]);
+                            }
+                            if (file_data[i][2].length() < 4) {
+                                intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                            } else {
+                                intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                            }
+                        }
+                    }
+                }
+                else {
+                    if (i == line_count - 1) {
+                        if (file_data[i][0].length() < 4) {
+                            intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                        } else {
+                            intermediate_writer.printf("%s\t", file_data[i][0]);
+                        }
+                        if (file_data[i][1].length() < 4) {
+                            intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                        } else {
+                            intermediate_writer.printf("%s\t", file_data[i][1]);
+                        }
+                        if (file_data[i][2].length() < 4) {
+                            intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                        } else {
+                            intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                        }
+                    }
+                    else {
+                        if ((location_counter - 1000) < 0) {
+                            intermediate_writer.printf("%s\t\t", Integer.toHexString(location_counter));
+                        } else {
+                            intermediate_writer.printf("%s\t", Integer.toHexString(location_counter));
                         }
                         if (file_data[i][0].length() < 4) {
                             intermediate_writer.printf("%s\t\t", file_data[i][0]);
@@ -160,35 +299,17 @@ public class CIS335_Ass4 {
                         }
                     }
                 }
-                else {
-                    if ((location_counter - 1000) < 0) {
-                    intermediate_writer.printf("%s\t\t", location_counter);
-                    } else {
-                    intermediate_writer.printf("%s\t", location_counter);
-                    }
-                    if (file_data[i][0].length() < 4) {
-                        intermediate_writer.printf("%s\t\t", file_data[i][0]);
-                    } else {
-                        intermediate_writer.printf("%s\t", file_data[i][0]);
-                    }
-                    if (file_data[i][1].length() < 4) {
-                        intermediate_writer.printf("%s\t\t", file_data[i][1]);
-                    } else {
-                        intermediate_writer.printf("%s\t", file_data[i][1]);
-                    }
-                    if (file_data[i][2].length() < 4) {
-                        intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
-                    } else {
-                        intermediate_writer.printf("%s\t\n", file_data[i][2]);
-                    }
-                }
 
                 String opcode = file_data[i][1];
                 if (opcode.compareTo("START") == 0) {
                     location_counter = Integer.parseInt(file_data[i][2]);
                 }
                 else if (opcode.compareTo("BYTE") == 0) {
-                    location_counter += 1;
+                    if (file_data[i][2].charAt(0) == 'C') {
+                        location_counter += file_data[i][2].substring(2,file_data[i][2].length()-1).length();
+                    } else {
+                        location_counter += 1;
+                    }
                 }
                 else if (opcode.compareTo("WORD") == 0) {
                     location_counter += 3;
@@ -231,7 +352,7 @@ public class CIS335_Ass4 {
                             }
                             else if (opFormats[j] == 3) {
 
-                                    location_counter += 3;
+                                location_counter += 3;
                             } else {
                                 System.out.printf("Error: Format not available for %s\n", opcode);
                                 System.exit(402);
@@ -245,12 +366,16 @@ public class CIS335_Ass4 {
                     }
                 }
             }
+
+
+            System.out.printf("TEST: %s\n", opcodeCreation(opKeys[getKeyIndex("STL", opTable)], "110010", 45, 3));
+
+            intermediate_writer.printf("\nSymbol Table: (size %d)\n", SYMTAB.size());
+            for (int i=0; i< SYMTAB.size(); i++) {
+                intermediate_writer.println(SYMTAB.get(i));
+            }
             intermediate_writer.close();
             /*
-            System.out.printf("Symbol Table: (size %d)\n", SYMTAB.size());
-            for (int i=0; i< SYMTAB.size(); i++) {
-                System.out.println(SYMTAB.get(i));
-            }
             System.out.println();
             System.out.printf("Address Table: (size %d)\n", ADDRTAB.size());
             for (int i=0; i< ADDRTAB.size(); i++) {
