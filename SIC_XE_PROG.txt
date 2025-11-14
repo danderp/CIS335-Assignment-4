@@ -1,6 +1,5 @@
 COPY   START  0
 FIRST  STL    RETADR
-       +LDT   #4096
        LDB    #LENGTH
        BASE   LENGTH
 CLOOP  +JSUB  RDREC
@@ -50,4 +49,5 @@ WLOOP  TD     OUTPUT
        JLT    WLOOP
        RSUB
 OUTPUT BYTE   X'05'
+
        END    FIRST
