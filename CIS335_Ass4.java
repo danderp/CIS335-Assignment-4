@@ -13,7 +13,7 @@ public class CIS335_Ass4 {
                 return i;
             }
         }
-        System.out.printf("%s not found in mnemonic table\n", mnemonic);
+        //System.out.printf("%s not found in mnemonic table\n", mnemonic);
         return -1;
     }
     public static boolean isInTable(String mnemonic, String[] mnemonicTable) {
@@ -448,9 +448,8 @@ public class CIS335_Ass4 {
                 String nixbpe = "000000";
                 int target_address = 0;
                 int format = 0;
-                System.out.println(LOCCTR.size());
-                int program_counter = LOCCTR.get(line_count-1);
-                System.out.printf("Line %d\n", i);
+                int program_counter = LOCCTR.get(line_count);
+                //System.out.printf("Line %d\n", i+1);
                 if (opcode.charAt(0) == '+') {
 
                     if (isInTable(opcode.substring(1), opTable)) {
@@ -491,10 +490,21 @@ public class CIS335_Ass4 {
                                 if (opcode.charAt(0) == '+') {
                                     nixbpe = "110001";
                                     format = 4;
-                                    System.out.println("test\n\n\n\n\n\n\n\n\n\n\n\n\n");
 
                                 } else if ((-2048 <= target_address - program_counter) && (target_address - program_counter <= 2047)) {
-
+                                    nixbpe = "110010";
+                                    format = 3;
+                                } else if (base) {
+                                    //reassign to base eventually
+                                    program_counter = 0;
+                                    if ((0 <= target_address - program_counter)&&(target_address - program_counter <= 4095)) {
+                                        nixbpe = "110100";
+                                        format = 3;
+                                    }
+                                }
+                                else {
+                                    System.out.println("Error: instruction addressing error.");
+                                    System.exit(409);
                                 }
                             }
                         }
@@ -539,17 +549,40 @@ public class CIS335_Ass4 {
                                 if (opcode.charAt(0) == '+') {
                                     nixbpe = "110001";
                                     format = 4;
-                                    System.out.println("test\n\n\n\n\n\n\n\n\n\n\n\n\n");
 
                                 } else if ((-2048 <= target_address - program_counter) && (target_address - program_counter <= 2047)) {
-
+                                    nixbpe = "110010";
+                                    format = 3;
+                                } else if (base) {
+                                    //reassign to base eventually
+                                    program_counter = 0;
+                                    if ((0 <= target_address - program_counter)&&(target_address - program_counter <= 4095)) {
+                                        nixbpe = "110100";
+                                        format = 3;
+                                    }
+                                }
+                                else {
+                                    System.out.println("Error: instruction addressing error.");
+                                    System.exit(409);
                                 }
                             }
                         }
                     }
                 }
+                if (!operand.isEmpty()) {
+                    if (operand.charAt(0) == '#') {
+                        nixbpe = '0' + nixbpe.substring(1);
+                    }
+                    if (operand.charAt(0) == '@') {
+                        nixbpe = nixbpe.substring(0,1) + '0' + nixbpe.substring(2);
+                    }
+                }
+                //will make this tomorrow but the idea will be comparing if (# of occurrences of , char) > (expected num of args)
+                if (false) {
+                    nixbpe = nixbpe.substring(0,2) + '1' + nixbpe.substring(3);
+                }
                 if (opcodeIndex != -1) {
-                    System.out.printf("TEST: %s\n", objcodeCreation(opKeys[opcodeIndex], nixbpe, target_address, format));
+                    System.out.printf("TEST: %s\n", (objcodeCreation(opKeys[opcodeIndex], nixbpe, target_address, format)));
                 }
             }
             /*

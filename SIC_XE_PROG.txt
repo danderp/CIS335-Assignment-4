@@ -1,5 +1,6 @@
 COPY   START  0
 FIRST  STL    RETADR
+       +LDT   #4096
        LDB    #LENGTH
        BASE   LENGTH
 CLOOP  +JSUB  RDREC
