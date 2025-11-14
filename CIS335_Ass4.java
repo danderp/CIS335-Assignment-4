@@ -58,6 +58,9 @@ public class CIS335_Ass4 {
         if (format == 3) {
             num_figs = 12;
         }
+        if (format == 4) {
+            num_figs = 20;
+        }
         if (format == 5) {
             num_figs = 20;
         }
@@ -581,8 +584,16 @@ public class CIS335_Ass4 {
                 if (false) {
                     nixbpe = nixbpe.substring(0,2) + '1' + nixbpe.substring(3);
                 }
-                if (opcodeIndex != -1) {
-                    System.out.printf("TEST: %s\n", (objcodeCreation(opKeys[opcodeIndex], nixbpe, target_address, format)));
+
+                if (opcode.charAt(0) == '+') {
+                    opcodeIndex = getKeyIndex(opcode.substring(1), opTable);
+                    if (opcodeIndex != -1) {
+                        System.out.printf("TEST: %s\n", (objcodeCreation(opKeys[opcodeIndex], nixbpe, target_address, format)));
+                    }
+                } else {
+                    if (opcodeIndex != -1) {
+                        System.out.printf("TEST: %s\n", (objcodeCreation(opKeys[opcodeIndex], nixbpe, target_address, format)));
+                    }
                 }
             }
             /*
