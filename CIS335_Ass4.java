@@ -16,14 +16,14 @@ public class CIS335_Ass4 {
         //System.out.printf("%s not found in mnemonic table\n", mnemonic);
         return -1;
     }
-    public static boolean isInTable(String mnemonic, String[] mnemonicTable) {
-        boolean bool = false;
+    public static int isInTable(String mnemonic, String[] mnemonicTable) {
+        int index = -1;
         for (int i=0; i<mnemonicTable.length; i++) {
             if (mnemonic.compareTo(mnemonicTable[i]) == 0) {
-                bool = true;
+                index = i;
             }
         }
-        return bool;
+        return index;
     }
     public static String objcodeCreation(String hexKey, String binaryFlags, int decimalAddress, int format) {
         String binaryOpcode = "";
@@ -41,7 +41,6 @@ public class CIS335_Ass4 {
             }
         }
         binaryKeyBuilder.append(Integer.toBinaryString(intermedKey));
-        binaryKey = binaryKeyBuilder.toString().substring(0,6);
 
 
         //convert address to binary
@@ -49,35 +48,44 @@ public class CIS335_Ass4 {
         int num_figs = Integer.toString(decimalAddress).length() * 4;
 
         //lol
+        String bin_num = Integer.toBinaryString(decimalAddress);
         if (format == 1) {
+            bin_num = "";
+            binaryFlags = "";
             num_figs = 0;
         }
         if (format == 2) {
-            num_figs = 0;
+            binaryFlags = "";
+            num_figs = 8;
         }
         if (format == 3) {
+            binaryKey = binaryKeyBuilder.toString().substring(0,6);
             num_figs = 12;
         }
         if (format == 4) {
+            binaryKey = binaryKeyBuilder.toString().substring(0,6);
             num_figs = 20;
         }
         if (format == 5) {
+            binaryKey = binaryKeyBuilder.toString().substring(0,6);
             num_figs = 20;
         }
         if (format == 6) {
+            binaryKey = binaryKeyBuilder.toString().substring(0,6);
             num_figs = 20;
         }
         if (format == 7) {
+            binaryKey = binaryKeyBuilder.toString().substring(0,6);
             num_figs = 12;
         }
         if (format == 8) {
+            binaryKey = binaryKeyBuilder.toString().substring(0,6);
             num_figs = 12;
         }
         if (format == 9) {
+            binaryKey = binaryKeyBuilder.toString().substring(0,6);
             num_figs = 12;
         }
-
-        String bin_num = Integer.toBinaryString(decimalAddress);
         int bin_len = bin_num.length();
         StringBuilder binaryAddress = new StringBuilder();
         if (num_figs - bin_len > 0) {
@@ -117,6 +125,7 @@ public class CIS335_Ass4 {
             DecimalFormat location_format = new DecimalFormat("0000");
             String[][] file_data = new String[lines][10];
             ArrayList<String> SYMTAB = new ArrayList<>();
+            String[] symtab_arr = {};
             ArrayList<Integer> ADDRTAB = new ArrayList<>();
             ArrayList<Integer> LOCCTR = new ArrayList<>();
             ArrayList<Integer> commentLines = new ArrayList<>();
@@ -198,6 +207,7 @@ public class CIS335_Ass4 {
                 4, 5, 6, 8,
                 9
             };
+            System.out.printf("IM %s MY HEXKEY IS %s\n", opTable[4], opKeys[4]);
             File file = new File(file_name);
 
             //breaking the file down into manageable chunks to properly check the formats afterwards
@@ -432,12 +442,12 @@ public class CIS335_Ass4 {
             intermediate_writer.close();
 
             //pass 2
-            for (int i = 0; i<line_count; i++) {
+            for (int i = 0; i<line_count-1; i++) {
                 //check if the line is a comment line
                 boolean isComment = false;
-                for (int c=0; c<commentLines.size(); c++) {
+                for (int c = 0; c < commentLines.size(); c++) {
                     if (i == commentLines.get(c)) {
-                      isComment = true;
+                        isComment = true;
                     }
                 }
                 if (isComment) {
@@ -449,29 +459,55 @@ public class CIS335_Ass4 {
                 int opcodeIndex = getKeyIndex(opcode, opTable);
                 String operand = file_data[i][2];
                 String nixbpe = "000000";
-                int target_address = 0;
+                int target_address = LOCCTR.get(line_count);
                 int format = 0;
+                int index = 0;
                 int program_counter = LOCCTR.get(line_count);
-                //System.out.printf("Line %d\n", i+1);
+                int address = target_address - program_counter;
+                String[] arguments = operand.split(",");
+                int numargs = arguments.length;
+                System.out.printf("Line %d\n", i + 1);
                 if (opcode.charAt(0) == '+') {
 
-                    if (isInTable(opcode.substring(1), opTable)) {
+                    if (isInTable(opcode.substring(1), opTable) >= 0) {
                         if (operand.isEmpty()) {
                             nixbpe = "110000";
                             format = 3;
                         } else if (opFormats[getKeyIndex(opcode.substring(1), opTable)] == 1) {
                             format = 1;
                         } else if (opFormats[getKeyIndex(opcode.substring(1), opTable)] == 2) {
+                            System.out.println("IM FORMAT 2");
                             format = 2;
-                        } else //(opFormats[getKeyIndex(opcode, opTable)] == 3)
-                        {
-                            //if the operand is empty
-                            if (operand.charAt(0) == '#') {
-                                for (int j = 0; j < SYMTAB.size(); j++) {
-                                    if (operand.substring(1).compareTo(SYMTAB.get(j)) == 0) {
-                                        target_address = ADDRTAB.get(j);
-                                        break;
+                            for (int r = 0; r < hardcodedRegisterNames.length; r++) {
+                                if (opExpectedArgs[opcodeIndex] == 0) {
+                                    target_address = 0;
+                                }
+                                if (opExpectedArgs[opcodeIndex] == 1) {
+
+                                    for (int a = 0; a < 1; a++) {
+                                        index = isInTable(arguments[a], SYMTAB.toArray(symtab_arr));
+                                        if (index >= 0) {
+                                            target_address = hardcodedRegisterInts[index];
+                                        }
                                     }
+                                }
+                                if (opExpectedArgs[opcodeIndex] == 2) {
+                                    for (int a = 0; a < 2; a++) {
+                                        index = isInTable(arguments[a], SYMTAB.toArray(symtab_arr));
+                                        if (index >= 0) {
+                                            target_address = hardcodedRegisterInts[index];
+                                        }
+                                    }
+                                }
+                            }
+                        } else //(opFormats[getKeyIndex(opcode, opTable)] == 3)
+                            {
+                            if (operand.charAt(0) == '#') {
+                                int symbol_index = isInTable(operand.substring(1), SYMTAB.toArray(symtab_arr));
+                                if (symbol_index >= 0) {
+                                    target_address = ADDRTAB.get(symbol_index);
+                                } else {
+                                    target_address = Integer.parseInt(operand.substring(1));
                                 }
                                 if ((0 <= target_address) && (target_address <= 4095)) {
                                     nixbpe = "010000";
@@ -494,48 +530,85 @@ public class CIS335_Ass4 {
                                     nixbpe = "110001";
                                     format = 4;
 
-                                } else if ((-2048 <= target_address - program_counter) && (target_address - program_counter <= 2047)) {
+                                } else if ((-2048 <= address) && (address <= 2047)) {
                                     nixbpe = "110010";
                                     format = 3;
                                 } else if (base) {
                                     //reassign to base eventually
                                     program_counter = 0;
-                                    if ((0 <= target_address - program_counter)&&(target_address - program_counter <= 4095)) {
+                                    if ((0 <= address) && (address<= 4095)) {
                                         nixbpe = "110100";
                                         format = 3;
                                     }
-                                }
-                                else {
+                                } else {
                                     System.out.println("Error: instruction addressing error.");
                                     System.exit(409);
                                 }
                             }
                         }
                     }
-                }
-                else {
-                    if (isInTable(opcode, opTable)) {
+                } else {
+                    if (isInTable(opcode, SYMTAB.toArray(symtab_arr)) >= 0) {
+
+                        if (operand.charAt(0) == 'C') {
+
+                        }
+                        else if (operand.charAt(0) == 'X') {
+                            operand = operand.substring(2,operand.length()-1);
+                        }
+                        else {
+                            System.out.println("Error");
+                        }
+                    }
+                    if (isInTable(opcode, opTable) >= 0) {
                         if (operand.isEmpty()) {
                             nixbpe = "110000";
                             format = 3;
                         } else if (opFormats[getKeyIndex(opcode, opTable)] == 1) {
+                            System.out.println("IM FORMAT 1");
+                            System.out.printf("IM %s, MY HEXKEY IS %s\n", opcode, opKeys[opcodeIndex]);
                             format = 1;
+
                         } else if (opFormats[getKeyIndex(opcode, opTable)] == 2) {
                             format = 2;
+                            System.out.println("IM FORMAT 2");
+                            System.out.printf("IM %s, MY HEXKEY IS %s\n", opcode, opKeys[opcodeIndex]);
+                            for (int r = 0; r < hardcodedRegisterNames.length; r++) {
+                                if (opExpectedArgs[opcodeIndex] == 0) {
+                                    target_address = 0;
+                                }
+                                else if (opExpectedArgs[opcodeIndex] == 1) {
+
+                                    for (int a = 0; a < 1; a++) {
+                                        index = isInTable(arguments[a], hardcodedRegisterNames);
+                                        if (index >= 0) {
+                                            target_address = hardcodedRegisterInts[index];
+                                        }
+                                    }
+                                }
+                                else if (opExpectedArgs[opcodeIndex] == 2) {
+                                    for (int a = 0; a < 2; a++) {
+                                        index = isInTable(arguments[a], SYMTAB.toArray(symtab_arr));
+                                        if (index >= 0) {
+                                            target_address = hardcodedRegisterInts[index];
+                                        }
+                                    }
+                                }
+                            }
                         } else //(opFormats[getKeyIndex(opcode, opTable)] == 3)
                         {
                             //if the operand is empty
                             if (operand.charAt(0) == '#') {
-                                for (int j = 0; j < SYMTAB.size(); j++) {
-                                    if (operand.substring(1).compareTo(SYMTAB.get(j)) == 0) {
-                                        target_address = ADDRTAB.get(j);
-                                        break;
-                                    }
+                                int symbol_index = isInTable(operand.substring(1), SYMTAB.toArray(symtab_arr));
+                                if (symbol_index >= 0) {
+                                    target_address = ADDRTAB.get(symbol_index);
+                                } else {
+                                    target_address = Integer.parseInt(operand.substring(1));
                                 }
-                                if ((0 <= target_address) && (target_address <= 4095)) {
+                                if ((0 <= address) && (address <= 4095)) {
                                     nixbpe = "010000";
                                     format = 3;
-                                } else if ((4096 <= target_address) && (target_address <= 1048575) && (opcode.charAt(0) == '+')) {
+                                } else if ((4096 <= address) && (address <= 1048575) && (opcode.charAt(0) == '+')) {
                                     nixbpe = "010001";
                                     format = 4;
                                 } else {
@@ -553,18 +626,17 @@ public class CIS335_Ass4 {
                                     nixbpe = "110001";
                                     format = 4;
 
-                                } else if ((-2048 <= target_address - program_counter) && (target_address - program_counter <= 2047)) {
+                                } else if ((-2048 <= address) && (address <= 2047)) {
                                     nixbpe = "110010";
                                     format = 3;
                                 } else if (base) {
                                     //reassign to base eventually
                                     program_counter = 0;
-                                    if ((0 <= target_address - program_counter)&&(target_address - program_counter <= 4095)) {
+                                    if ((0 <= address) && (address <= 4095)) {
                                         nixbpe = "110100";
                                         format = 3;
                                     }
-                                }
-                                else {
+                                } else {
                                     System.out.println("Error: instruction addressing error.");
                                     System.exit(409);
                                 }
@@ -577,22 +649,24 @@ public class CIS335_Ass4 {
                         nixbpe = '0' + nixbpe.substring(1);
                     }
                     if (operand.charAt(0) == '@') {
-                        nixbpe = nixbpe.substring(0,1) + '0' + nixbpe.substring(2);
+                        nixbpe = nixbpe.substring(0, 1) + '0' + nixbpe.substring(2);
                     }
                 }
                 //will make this tomorrow but the idea will be comparing if (# of occurrences of , char) > (expected num of args)
-                if (false) {
-                    nixbpe = nixbpe.substring(0,2) + '1' + nixbpe.substring(3);
+                if (opcodeIndex >= 0) {
+                    if (numargs > opExpectedArgs[opcodeIndex]) {
+                        nixbpe = nixbpe.substring(0, 2) + '1' + nixbpe.substring(3);
+                    }
                 }
 
                 if (opcode.charAt(0) == '+') {
                     opcodeIndex = getKeyIndex(opcode.substring(1), opTable);
                     if (opcodeIndex != -1) {
-                        System.out.printf("TEST: %s\n", (objcodeCreation(opKeys[opcodeIndex], nixbpe, target_address, format)));
+                        System.out.printf("TEST: %s\n", (objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format)));
                     }
                 } else {
                     if (opcodeIndex != -1) {
-                        System.out.printf("TEST: %s\n", (objcodeCreation(opKeys[opcodeIndex], nixbpe, target_address, format)));
+                        System.out.printf("TEST: %s\n", (objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format)));
                     }
                 }
             }
