@@ -47,6 +47,10 @@ public class CIS335_Ass4 {
         StringBuilder binaryKeyBuilder = new StringBuilder();
         String binaryKey = Integer.toBinaryString(intermedKey);
 
+        //for format 2
+        String register1 = "00";
+        String register2 = "00";
+
         if (intermed_len - binaryKey.length() > 0) {
             for (int i = 0; i<intermed_len - binaryKey.length(); i++) {
                 //add missing zeroes to the front
@@ -72,8 +76,18 @@ public class CIS335_Ass4 {
             num_figs = 0;
         }
         if (format == 2) {
-            //int.parseint -> 0x0y -> x0y -> xxxx0000yyyy -> 0000xxxx0000yyyy
-            num_figs = 8;
+            int num_regs = 2;
+            StringBuilder registersbuilder = new StringBuilder(Integer.toString(decimalAddress));
+            int reg_len = registersbuilder.length();
+            String registers = "";
+            if (reg_len < num_regs) {
+                for (int i = reg_len; i<num_regs; i++) {
+                    registersbuilder.insert(0,"0");
+                }
+            }
+            registers = registersbuilder.toString();
+            register1 = Integer.toString(Integer.parseInt(registers.substring(0,1)));
+            register2 = Integer.toString(Integer.parseInt(registers.substring(1,2)));
             binaryFlags = "";
         }
         if (format == 3) {
@@ -83,26 +97,6 @@ public class CIS335_Ass4 {
         if (format == 4) {
             binaryKey = binaryKeyBuilder.substring(0,6);
             num_figs = 20;
-        }
-        if (format == 5) {
-            binaryKey = binaryKeyBuilder.substring(0,6);
-            num_figs = 20;
-        }
-        if (format == 6) {
-            binaryKey = binaryKeyBuilder.substring(0,6);
-            num_figs = 20;
-        }
-        if (format == 7) {
-            binaryKey = binaryKeyBuilder.substring(0,6);
-            num_figs = 12;
-        }
-        if (format == 8) {
-            binaryKey = binaryKeyBuilder.substring(0,6);
-            num_figs = 12;
-        }
-        if (format == 9) {
-            binaryKey = binaryKeyBuilder.substring(0,6);
-            num_figs = 12;
         }
 
         int bin_len = bin_num.length();
@@ -124,13 +118,25 @@ public class CIS335_Ass4 {
 
         opcodeBuilder.append(binaryKey);
         opcodeBuilder.append(binaryFlags);
-        opcodeBuilder.append(binaryAddress);
+        if (format != 2) {
+            opcodeBuilder.append(binaryAddress);
+        }
         String opcode = opcodeBuilder.toString();
 
         int opcodeint = Integer.parseInt(opcode, 2);
         //int op_len = Integer.toString(opcodeint).length() * 4;
 
         opcode = Integer.toHexString(opcodeint);
+        //for cases where the first hex opcode is 0 and tohexstring automatically cuts it off
+        if (opcode.length() == 5) {
+            opcode = "0" + opcode;
+        }
+        if (format == 2) {
+            StringBuilder registerbuilder = new StringBuilder(opcode);
+            registerbuilder.append(register1);
+            registerbuilder.append(register2);
+            opcode = registerbuilder.toString();
+        }
         return opcode;
     }
     public static void main(String[] args) {
@@ -492,11 +498,6 @@ public class CIS335_Ass4 {
                 String[] arguments = operand.split(",");
                 int numargs = arguments.length;
 
-                if (opcodeIndex != -1) {
-                    if (opFormats[opcodeIndex] == 2) {
-                        System.out.printf("%s, %d\n", opcode, opExpectedArgs[opcodeIndex]);
-                    }
-                }
 
                 if (opcode.compareTo("BYTE") == 0) {
                     //convert necessary byte data into an array of characters to manipulate with an external method
@@ -504,7 +505,11 @@ public class CIS335_Ass4 {
                     if (operand.charAt(0) == 'C') {
                         System.out.printf("TEST: %s\n", literalCharacterConversion(byte_data));
                     } else if (operand.charAt(0) == 'X') {
-                        System.out.printf("TEST: %s\n", literalCharacterConversion(byte_data));
+                        System.out.print("TEST: ");
+                        for (int p=0; p<byte_data.length;p++){
+                            System.out.printf("%s", byte_data[p]);
+                        }
+                        System.out.println();
                     } else {
                         System.out.println("Error. Literal format not supported (Must be C or X).");
                     }
@@ -607,45 +612,20 @@ public class CIS335_Ass4 {
 
                         } else if (opFormats[getKeyIndex(opcode, opTable)] == 2) {
                             format = 2;
-
+                            StringBuilder registerbuilder = new StringBuilder();
                             for (int r = 0; r < hardcodedRegisterNames.length; r++) {
-                                if (opExpectedArgs[opcodeIndex] < arguments.length) {
-
-                                }
-                                else if (opExpectedArgs[opcodeIndex] == arguments.length) {
-                                    StringBuilder registerbuilder = new StringBuilder();
-                                    for (int a = 0; a < 2; a++) {
-                                        index = isInTable(arguments[a], SYMTAB.toArray(symtab_arr));
-                                        if (index >= 0) {
-                                            //if its single digit -> 0x0y
-                                            //if its multi digit -> xxyy
-                                            if (hardcodedRegisterInts[index] % 10 == 0) {
-                                                registerbuilder.append("0");
-                                                registerbuilder.append(hardcodedRegisterInts[index]);
-                                            } else {
-                                                registerbuilder.append(hardcodedRegisterInts[index]);
-                                            }
-                                        }
-                                        else {
-                                            System.out.println("I dont think you can do that");
-                                            index = isInTable(arguments[a], hardcodedRegisterNames);
-                                            if (index >= 0) {
-                                                if (hardcodedRegisterInts[index] % 10 == 0) {
-                                                    registerbuilder.append("0");
-                                                    registerbuilder.append(hardcodedRegisterInts[index]);
-                                                } else {
-                                                    registerbuilder.append(hardcodedRegisterInts[index]);
-                                                }
-                                            }
-                                        }
+                                for (int a = 0; a<arguments.length; a++) {
+                                    if (arguments[a].compareTo(hardcodedRegisterNames[r]) == 0) {
+                                        registerbuilder.append(hardcodedRegisterInts[r]);
                                     }
-                                    //System.out.println(Integer.parseInt(registerbuilder.toString()));
-                                    address = Integer.parseInt(registerbuilder.toString());
-
-                                } else {
-
                                 }
                             }
+                            if (arguments.length < 2) {
+                                for (int a = 0; a<(2-arguments.length); a++) {
+                                    registerbuilder.append("0");
+                                }
+                            }
+                            address = Integer.parseInt(registerbuilder.toString());
                         } else //(opFormats[getKeyIndex(opcode, opTable)] == 3)
                         {
                             //if the operand is empty
@@ -656,13 +636,18 @@ public class CIS335_Ass4 {
                                 } else {
                                     target_address = Integer.parseInt(operand.substring(1));
                                 }
+                                address = target_address - program_counter;
                                 if ((0 <= target_address) && (target_address <= 4095)) {
-                                    address = target_address - program_counter;
-                                    //vv
-                                    nixbpe = "010010";
+                                    //if it isnt an immediate numeric the computer needs to know as much (pc relative here)
+                                    //if it is, the address can just be that immediate numeric
+                                    if (symbol_index < 0) {
+                                        address = target_address;
+                                        nixbpe = "010000";
+                                    } else {
+                                        nixbpe = "010010";
+                                    }
                                     format = 3;
                                 } else if ((4096 <= target_address) && (target_address <= 1048575) && (opcode.charAt(0) == '+')) {
-                                    address = target_address - program_counter;
                                     nixbpe = "010001";
                                     format = 4;
                                 } else {
