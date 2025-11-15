@@ -65,14 +65,16 @@ public class CIS335_Ass4 {
         if (bin_num.length() > num_figs) {
            bin_num = bin_num.substring(bin_num.length()-num_figs);
         }
+
         if (format == 1) {
             bin_num = "";
             binaryFlags = "";
             num_figs = 0;
         }
         if (format == 2) {
-            binaryFlags = "";
+            //int.parseint -> 0x0y -> x0y -> xxxx0000yyyy -> 0000xxxx0000yyyy
             num_figs = 8;
+            binaryFlags = "";
         }
         if (format == 3) {
             binaryKey = binaryKeyBuilder.substring(0,6);
@@ -102,6 +104,7 @@ public class CIS335_Ass4 {
             binaryKey = binaryKeyBuilder.substring(0,6);
             num_figs = 12;
         }
+
         int bin_len = bin_num.length();
         StringBuilder binaryAddress = new StringBuilder();
         if (num_figs - bin_len > 0) {
@@ -110,6 +113,12 @@ public class CIS335_Ass4 {
                 binaryAddress.append("0");
             }
         }
+        /*
+        if (format == 2) {
+            String register1 = Integer.toString(decimalAddress).substring(0,4);
+            String register2 = Integer.toString(decimalAddress).substring(4,7);
+        }
+         */
         //add the address
         binaryAddress.append(bin_num);
 
@@ -483,6 +492,12 @@ public class CIS335_Ass4 {
                 String[] arguments = operand.split(",");
                 int numargs = arguments.length;
 
+                if (opcodeIndex != -1) {
+                    if (opFormats[opcodeIndex] == 2) {
+                        System.out.printf("%s, %d\n", opcode, opExpectedArgs[opcodeIndex]);
+                    }
+                }
+
                 if (opcode.compareTo("BYTE") == 0) {
                     //convert necessary byte data into an array of characters to manipulate with an external method
                     char[] byte_data = operand.substring(2,operand.length()-1).toCharArray();
@@ -594,25 +609,41 @@ public class CIS335_Ass4 {
                             format = 2;
 
                             for (int r = 0; r < hardcodedRegisterNames.length; r++) {
-                                if (opExpectedArgs[opcodeIndex] == 0) {
-                                    address = 0;
-                                }
-                                else if (opExpectedArgs[opcodeIndex] == 1) {
+                                if (opExpectedArgs[opcodeIndex] < arguments.length) {
 
-                                    for (int a = 0; a < 1; a++) {
-                                        index = isInTable(arguments[a], hardcodedRegisterNames);
-                                        if (index >= 0) {
-                                            address = hardcodedRegisterInts[index];
-                                        }
-                                    }
                                 }
-                                else if (opExpectedArgs[opcodeIndex] == 2) {
+                                else if (opExpectedArgs[opcodeIndex] == arguments.length) {
+                                    StringBuilder registerbuilder = new StringBuilder();
                                     for (int a = 0; a < 2; a++) {
                                         index = isInTable(arguments[a], SYMTAB.toArray(symtab_arr));
                                         if (index >= 0) {
-                                            address = hardcodedRegisterInts[index];
+                                            //if its single digit -> 0x0y
+                                            //if its multi digit -> xxyy
+                                            if (hardcodedRegisterInts[index] % 10 == 0) {
+                                                registerbuilder.append("0");
+                                                registerbuilder.append(hardcodedRegisterInts[index]);
+                                            } else {
+                                                registerbuilder.append(hardcodedRegisterInts[index]);
+                                            }
+                                        }
+                                        else {
+                                            System.out.println("I dont think you can do that");
+                                            index = isInTable(arguments[a], hardcodedRegisterNames);
+                                            if (index >= 0) {
+                                                if (hardcodedRegisterInts[index] % 10 == 0) {
+                                                    registerbuilder.append("0");
+                                                    registerbuilder.append(hardcodedRegisterInts[index]);
+                                                } else {
+                                                    registerbuilder.append(hardcodedRegisterInts[index]);
+                                                }
+                                            }
                                         }
                                     }
+                                    //System.out.println(Integer.parseInt(registerbuilder.toString()));
+                                    address = Integer.parseInt(registerbuilder.toString());
+
+                                } else {
+
                                 }
                             }
                         } else //(opFormats[getKeyIndex(opcode, opTable)] == 3)
