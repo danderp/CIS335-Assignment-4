@@ -1,12 +1,40 @@
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 //test 2
 
 public class CIS335_Ass4 {
+    public static void writeObjCodeFile(PrintWriter file_writer, String program_name, String starting_address, String length) {
+
+    }
+    public static void writeListingFile(PrintWriter file_writer) {
+
+    }
+    //why did i not make this so much sooner? there is string padding literally everywhere in this assignment
+    public static String padStringBack(StringBuilder string, String padding, int string_size, int padded_size) {
+        if (string_size < padded_size) {
+            for (int i = 0; i<padded_size-string_size; i++) {
+                string.append(padding);
+            }
+        }
+        return string.toString();
+    }
+    //pads to the front of the string rather than the back
+    public static String padStringFront(StringBuilder string, String padding, int string_size, int padded_size) {
+        if (string_size < padded_size) {
+            for (int i = 0; i<padded_size-string_size; i++) {
+                string.insert(0, padding);
+            }
+        }
+        return string.toString();
+    }
     public static String literalCharacterConversion(char[] lit_data) {
         StringBuilder lit_builder = new StringBuilder();
         int char_ascii = 0;
@@ -141,7 +169,8 @@ public class CIS335_Ass4 {
     }
     public static void main(String[] args) {
         try {
-            PrintWriter intermediate_writer = new PrintWriter("intermediate_file.txt", StandardCharsets.UTF_8);
+            PrintWriter intermediate_writer = new PrintWriter("listing_file.txt", StandardCharsets.UTF_8);
+            PrintWriter objcode_writer = new PrintWriter("OBJCODE.txt", StandardCharsets.UTF_8);
             String file_name = args[0];
             //get line count of file
             BufferedReader reader = new BufferedReader(new FileReader(args[0]));
@@ -159,6 +188,8 @@ public class CIS335_Ass4 {
             ArrayList<String> SYMTAB = new ArrayList<>();
             String[] symtab_arr = {};
             ArrayList<String> OBJECTCODE = new ArrayList<>();
+            ArrayList<Integer> objcodelines = new ArrayList<>();
+            List<String> listing_file = new ArrayList<>();
             ArrayList<Integer> ADDRTAB = new ArrayList<>();
             ArrayList<Integer> LOCCTR = new ArrayList<>();
             ArrayList<Integer> commentLines = new ArrayList<>();
@@ -321,8 +352,12 @@ public class CIS335_Ass4 {
                             }
                             if (file_data[i][2].length() < 4) {
                                 intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
-                            } else {
+                            }
+                            //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
+                            else if (file_data[i][2].length() < 8){
                                 intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                            } else {
+                                intermediate_writer.printf("%s\n", file_data[i][2]);
                             }
                         } else {
                             ADDRTAB.add(location_counter);
@@ -343,8 +378,12 @@ public class CIS335_Ass4 {
                             }
                             if (file_data[i][2].length() < 4) {
                                 intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
-                            } else {
+                            }
+                            //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
+                            else if (file_data[i][2].length() < 8){
                                 intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                            } else {
+                                intermediate_writer.printf("%s\n", file_data[i][2]);
                             }
                         }
                     }
@@ -363,8 +402,12 @@ public class CIS335_Ass4 {
                         }
                         if (file_data[i][2].length() < 4) {
                             intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
-                        } else {
+                        }
+                        //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
+                        else if (file_data[i][2].length() < 8){
                             intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                        } else {
+                            intermediate_writer.printf("%s\n", file_data[i][2]);
                         }
                     }
                     else {
@@ -385,8 +428,12 @@ public class CIS335_Ass4 {
                         }
                         if (file_data[i][2].length() < 4) {
                             intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
-                        } else {
+                        }
+                        //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
+                        else if (file_data[i][2].length() < 8){
                             intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                        } else {
+                            intermediate_writer.printf("%s\n", file_data[i][2]);
                         }
                     }
                 }
@@ -502,12 +549,13 @@ public class CIS335_Ass4 {
                 if (opcode.compareTo("BYTE") == 0) {
                     //convert necessary byte data into an array of characters to manipulate with an external method
                     char[] byte_data = operand.substring(2,operand.length()-1).toCharArray();
+                    StringBuilder byte_code = new StringBuilder();
                     if (operand.charAt(0) == 'C') {
-                        System.out.printf("TEST: %s\n", literalCharacterConversion(byte_data));
+                        byte_code.append(literalCharacterConversion(byte_data));
                     } else if (operand.charAt(0) == 'X') {
                         System.out.print("TEST: ");
                         for (int p=0; p<byte_data.length;p++){
-                            System.out.printf("%s", byte_data[p]);
+                            byte_code.append(byte_data[p]);
                         }
                         System.out.println();
                     } else {
@@ -714,17 +762,49 @@ public class CIS335_Ass4 {
                 if (opcode.charAt(0) == '+') {
                     opcodeIndex = getKeyIndex(opcode.substring(1), opTable);
                     if (opcodeIndex != -1) {
-                        System.out.printf("TEST: %s\n", (objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format)));
+                        String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format);
+                        OBJECTCODE.add(objcode);
+                        objcodelines.add(i);
                     }
                 } else {
                     if (opcodeIndex != -1) {
-                        System.out.printf("TEST: %s\n", (objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format)));
+                        String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format);
+                        OBJECTCODE.add(objcode);
+                        objcodelines.add(i);
                     }
                 }
             }
-            /*
+            //listing file
+            makeListingFile(line_count, objcodelines, listing_file, OBJECTCODE);
+            //object code file
+            //header
+            //this process is a little bloated but essentially, every single entered reference has to have a very specific padding
+            //in order to occupy their carved out column space as detailed on ch2 slide 21, so im using stringbuilders (as i have
+            //been for a majority of the assignment) to make this process easier, and then just converting that stringbuilder
+            //to a padded string with the padStringBack/Front functions for each entry of object code/data
+            StringBuilder filenamebuilder = new StringBuilder(SYMTAB.getFirst());
+            int filename_length = filenamebuilder.length();
+            String filename = padStringBack(filenamebuilder, " ", filename_length, 6);
+            StringBuilder starting_addr_builder = new StringBuilder(Integer.toString(ADDRTAB.getFirst()));
+            int starting_addr_length = starting_addr_builder.length();
+            String starting_addr = padStringFront(starting_addr_builder, "0", starting_addr_length, 6);
+            StringBuilder file_size_builder = new StringBuilder(Integer.toHexString(LOCCTR.getLast()));
+            int file_size_length = file_size_builder.length();
+            String file_size = padStringFront(file_size_builder, "0", file_size_length, 6);
+            String header = "H" + filename + starting_addr + file_size;
+            objcode_writer.append(header);
+            //text
+            String text_line = "T";
+            int curr_line = 0;
+            int max_col_space = 60;
+            while (curr_line < objcodelines.size()) {
+                ArrayList<String> text_line_objs = new ArrayList<>();
 
-             */
+                curr_line++;
+            }
+
+
+            objcode_writer.close();
 
             System.out.println();
             System.out.printf("Address Table: (size %d)\n", ADDRTAB.size());
@@ -739,6 +819,26 @@ public class CIS335_Ass4 {
         } catch (IOException e) {
             System.out.print("Error: IOException\n");
         }
+    }
+
+    private static void makeListingFile(int line_count, ArrayList<Integer> objcodelines, List<String> listing_file, ArrayList<String> OBJECTCODE) throws IOException {
+        Path intermediate_file_path = Paths.get("listing_file.txt");
+        List<String> listing_file_lines = Files.readAllLines(intermediate_file_path);
+        for (int i = 0; i< line_count; i++) {
+            boolean object_line = false;
+            //add the original line
+            for (int j = 0; j< objcodelines.size(); j++) {
+                //if there is object code at that line, append the object code to the original, separated by a tab
+                if (i == objcodelines.get(j)) {
+                    listing_file.add(listing_file_lines.get(i) + " " + OBJECTCODE.get(j));
+                    object_line = true;
+                }
+            }
+            if (!object_line) {
+                listing_file.add(listing_file_lines.get(i));
+            }
+        }
+        Files.write(intermediate_file_path, listing_file);
     }
 }
 
