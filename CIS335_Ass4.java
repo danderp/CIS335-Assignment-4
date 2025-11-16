@@ -552,12 +552,15 @@ public class CIS335_Ass4 {
                     StringBuilder byte_code = new StringBuilder();
                     if (operand.charAt(0) == 'C') {
                         byte_code.append(literalCharacterConversion(byte_data));
+                        OBJECTCODE.add(byte_code.toString());
+                        objcodelines.add(i);
                     } else if (operand.charAt(0) == 'X') {
                         System.out.print("TEST: ");
                         for (int p=0; p<byte_data.length;p++){
                             byte_code.append(byte_data[p]);
                         }
-                        System.out.println();
+                        OBJECTCODE.add(byte_code.toString());
+                        objcodelines.add(i);
                     } else {
                         System.out.println("Error. Literal format not supported (Must be C or X).");
                     }
