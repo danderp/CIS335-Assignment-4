@@ -710,10 +710,6 @@ public class CIS335_Ass4 {
                             }
                         }
                     }
-                    System.out.println(i + " " + num_comment_lines);
-                    if (i == 47) {
-                        System.out.println(":)");
-                    }
                     //variable init
                     String label = file_data[i][0];
                     String opcode = file_data[i][1];
@@ -1148,9 +1144,6 @@ public class CIS335_Ass4 {
                             objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
                         }
                     }
-                    if (i == 49) {
-                        System.out.println(":)");
-                    }
                 }
             }
             //listing file
@@ -1268,7 +1261,6 @@ public class CIS335_Ass4 {
             listing_file.add(hardcodedRegisterNames[i] + " " + hardcodedRegisterInts[i]);
         }
         Files.write(intermediate_file_path, listing_file);
-        System.out.println(objcodelines.size());
     }
 }
 
