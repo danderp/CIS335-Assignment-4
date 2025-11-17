@@ -1,5 +1,4 @@
 import java.io.*;
-import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -203,16 +202,18 @@ public class CIS335_Ass4 {
             boolean sicxe = false;
             int line_count = 0;
             int location_counter = 0;
+            int program_start = 0;
+            String program_end = "";
             String base_num = "";
             DecimalFormat location_format = new DecimalFormat("0000");
             String[][] file_data = new String[lines][10];
             ArrayList<String> SYMTAB = new ArrayList<>();
             ArrayList<String> OBJECTCODE = new ArrayList<>();
             ArrayList<Integer> objcodelines = new ArrayList<>();
+            ArrayList<String> objcodelocations = new ArrayList<>();
             List<String> listing_file = new ArrayList<>();
             ArrayList<Integer> ADDRTAB = new ArrayList<>();
             ArrayList<Integer> LOCCTR = new ArrayList<>();
-
             ArrayList<Integer> commentLines = new ArrayList<>();
             String[] opTable = {
                     "ADD", "ADDF", "ADDR", "AND",
@@ -356,6 +357,10 @@ public class CIS335_Ass4 {
             //start doing format checking
             if (sicxe) {
                 for (int i = 0; i < line_count; i++) {
+                    if (file_data[i][1].compareTo("START") == 0) {
+                        location_counter = Integer.parseInt(file_data[i][2], 16);
+                        program_start = location_counter;
+                    }
                     if (!file_data[i][0].isEmpty()) {
                         if (file_data[i][0].charAt(0) == '.') {
                             commentLines.add(i);
@@ -459,9 +464,16 @@ public class CIS335_Ass4 {
                         }
                     }
                     String opcode = file_data[i][1];
+                    if (!file_data[i][0].isEmpty()) {
+                        if (file_data[i][0].charAt(0) == '.') {
+                            LOCCTR.add(location_counter);
+                            continue;
+                        }
+                    }
                     if (opcode.compareTo("START") == 0) {
                         location_counter = Integer.parseInt(file_data[i][2], 16);
-                    } else if (opcode.compareTo("BYTE") == 0) {
+                    }
+                    else if (opcode.compareTo("BYTE") == 0) {
                         if (file_data[i][2].charAt(0) == 'C') {
                             location_counter += file_data[i][2].substring(2, file_data[i][2].length() - 1).length();
                         } else {
@@ -474,6 +486,7 @@ public class CIS335_Ass4 {
                     } else if (opcode.compareTo("RESW") == 0) {
                         location_counter += Integer.parseInt(file_data[i][2]) * 3;
                     } else if (opcode.compareTo("END") == 0) {
+                        program_end = file_data[i][2];
                     } else if (opcode.compareTo("BASE") == 0) {
                         //base = true;
                         if (file_data[i][2].charAt(0) == '#') {
@@ -524,6 +537,10 @@ public class CIS335_Ass4 {
             }
                 else {
                     for (int i=0; i<line_count; i++) {
+                        if (file_data[i][1].compareTo("START") == 0) {
+                            location_counter = Integer.parseInt(file_data[i][2], 16);
+                            program_start = location_counter;
+                        }
                         if (!file_data[i][0].isEmpty()) {
                             if (file_data[i][0].charAt(0) == '.') {
                                 commentLines.add(i);
@@ -635,7 +652,8 @@ public class CIS335_Ass4 {
                     }
                     if (opcode.compareTo("START") == 0) {
                         location_counter = Integer.parseInt(file_data[i][2], 16);
-                    } else if (opcode.compareTo("BYTE") == 0) {
+                    }
+                    else if (opcode.compareTo("BYTE") == 0) {
                         if (file_data[i][2].charAt(0) == 'C') {
                             location_counter += file_data[i][2].substring(2, file_data[i][2].length() - 1).length();
                         } else {
@@ -663,7 +681,7 @@ public class CIS335_Ass4 {
             }
             String[] locctr_arr = new String[LOCCTR.size()];
             for (int i=0; i< LOCCTR.size(); i++) {
-                locctr_arr[i] = Integer.toString(LOCCTR.get(i));
+                locctr_arr[i] = Integer.toHexString(LOCCTR.get(i));
             }
             String[] commentLinesArr = new String[commentLines.size()];
             for (int i=0; i< commentLines.size(); i++) {
@@ -673,7 +691,7 @@ public class CIS335_Ass4 {
             //pass 2
             if (sicxe) {
                 for (int i = 0; i < line_count - 1; i++) {
-
+                    int num_comment_lines = 0;
                     //check if the line is a comment line
                     boolean isComment = false;
                     for (int c = 0; c < commentLines.size(); c++) {
@@ -683,6 +701,18 @@ public class CIS335_Ass4 {
                     }
                     if (isComment) {
                         continue;
+                    }
+                    //see how many comments there have been before this line
+                    for (int c=0; c<i; c++) {
+                        if (!file_data[c][0].isEmpty()) {
+                            if (file_data[c][0].charAt(0) == '.') {
+                                num_comment_lines++;
+                            }
+                        }
+                    }
+                    System.out.println(i + " " + num_comment_lines);
+                    if (i == 47) {
+                        System.out.println(":)");
                     }
                     //variable init
                     String label = file_data[i][0];
@@ -706,6 +736,8 @@ public class CIS335_Ass4 {
                     if (opcode.compareTo("WORD") == 0) {
                         StringBuilder word_builder = new StringBuilder(Integer.parseInt(operand));
                         OBJECTCODE.add(padStringFront(word_builder, "0", operand.length(), 6));
+                        objcodelines.add(i);
+                        objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-2)));
                     }
                     else if (opcode.compareTo("BYTE") == 0) {
                         //convert necessary byte data into an array of characters to manipulate with an external method
@@ -715,12 +747,14 @@ public class CIS335_Ass4 {
                             byte_code.append(literalCharacterConversion(byte_data));
                             OBJECTCODE.add(byte_code.toString());
                             objcodelines.add(i);
+                            objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-2)));
                         } else if (original_operand.charAt(0) == 'X') {
                             for (int p = 0; p < byte_data.length; p++) {
                                 byte_code.append(byte_data[p]);
                             }
                             OBJECTCODE.add(byte_code.toString());
                             objcodelines.add(i);
+                            objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-2)));
                         } else {
                             System.out.println("Error. Literal format not supported (Must be C or X).");
                         }
@@ -916,6 +950,7 @@ public class CIS335_Ass4 {
                     } else if (isInTable(opcode, symtab_arr) >= 0) {
                         OBJECTCODE.add("");
                         objcodelines.add(i);
+                        objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
                     }
                     if (!original_operand.isEmpty()) {
                         if (original_operand.charAt(0) == '#') {
@@ -938,16 +973,30 @@ public class CIS335_Ass4 {
                             String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format, sicxe);
                             OBJECTCODE.add(objcode);
                             objcodelines.add(i);
+                            objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
                         }
                     } else if (operand.isEmpty()) {
                         String objcode = objcodeCreation(opKeys[opcodeIndex], "110000", 0, format, sicxe);
                         OBJECTCODE.add(objcode);
                         objcodelines.add(i);
-                    } else {
+                        objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
+                    }
+                    else if (opcode.compareTo("RESW") == 0) {
+                        OBJECTCODE.add("");
+                        objcodelines.add(i);
+                        objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
+                    }
+                    else if (opcode.compareTo("RESB") == 0) {
+                        OBJECTCODE.add("");
+                        objcodelines.add(i);
+                        objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
+                    }
+                    else {
                         if (opcodeIndex != -1) {
                             String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format, sicxe);
                             OBJECTCODE.add(objcode);
                             objcodelines.add(i);
+                            objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
                         }
                     }
                 }
@@ -955,6 +1004,7 @@ public class CIS335_Ass4 {
             //sic
             else {
                 for (int i = 0; i < line_count - 1; i++) {
+                    int num_comment_lines = 0;
                     //check if the line is a comment line
                     boolean isComment = false;
                     for (int c = 0; c < commentLines.size(); c++) {
@@ -964,6 +1014,14 @@ public class CIS335_Ass4 {
                     }
                     if (isComment) {
                         continue;
+                    }
+                    //see how many comments there have been before this line
+                    for (int c=0; c<i; c++) {
+                        if (!file_data[c][0].isEmpty()) {
+                            if (file_data[c][0].charAt(0) == '.') {
+                                num_comment_lines++;
+                            }
+                        }
                     }
                     //variable init
                     String label = file_data[i][0];
@@ -987,6 +1045,7 @@ public class CIS335_Ass4 {
                         StringBuilder word_builder = new StringBuilder(Integer.toHexString(Integer.parseInt(operand)));
                         OBJECTCODE.add(padStringFront(word_builder, "0", operand.length(), 6));
                         objcodelines.add(i);
+                        objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
                     }
                     if (opcode.compareTo("BYTE") == 0) {
                         //convert necessary byte data into an array of characters to manipulate with an external method
@@ -996,12 +1055,14 @@ public class CIS335_Ass4 {
                             byte_code.append(literalCharacterConversion(byte_data));
                             OBJECTCODE.add(byte_code.toString());
                             objcodelines.add(i);
+                            objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
                         } else if (original_operand.charAt(0) == 'X') {
                             for (int p = 0; p < byte_data.length; p++) {
                                 byte_code.append(byte_data[p]);
                             }
                             OBJECTCODE.add(byte_code.toString());
                             objcodelines.add(i);
+                            objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
                         } else {
                             System.out.println("Error. Literal format not supported (Must be C or X).");
                         }
@@ -1009,6 +1070,7 @@ public class CIS335_Ass4 {
                     if (isInTable(opcode, symtab_arr) >= 0 ) {
                         OBJECTCODE.add("");
                         objcodelines.add(i);
+                        objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
                     }
                     if (isInTable(opcode, opTable) >= 0) {
                         if (opFormats[getKeyIndex(opcode, opTable)] == 1) {
@@ -1063,17 +1125,31 @@ public class CIS335_Ass4 {
                         }
                     }
 
-
                     if (operand.isEmpty()) {
                         String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, 0, format, sicxe);
                         OBJECTCODE.add(objcode);
                         objcodelines.add(i);
-                    } else {
+                        objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
+                    } else if (opcode.compareTo("RESW") == 0) {
+                        OBJECTCODE.add("");
+                        objcodelines.add(i);
+                        objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
+                    }
+                    else if (opcode.compareTo("RESB") == 0) {
+                        OBJECTCODE.add("");
+                        objcodelines.add(i);
+                        objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
+                    }
+                    else {
                         if (opcodeIndex != -1) {
                             String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format, sicxe);
                             OBJECTCODE.add(objcode);
                             objcodelines.add(i);
+                            objcodelocations.add(Integer.toHexString(LOCCTR.get(i+num_comment_lines-1)));
                         }
+                    }
+                    if (i == 49) {
+                        System.out.println(":)");
                     }
                 }
             }
@@ -1088,93 +1164,76 @@ public class CIS335_Ass4 {
             StringBuilder filenamebuilder = new StringBuilder(SYMTAB.getFirst());
             int filename_length = filenamebuilder.length();
             String filename = padStringBack(filenamebuilder, " ", filename_length, 6);
-            StringBuilder starting_addr_builder = new StringBuilder(Integer.toHexString(ADDRTAB.getFirst()));
+
+            StringBuilder starting_addr_builder = new StringBuilder(Integer.toHexString(program_start));
             int starting_addr_length = starting_addr_builder.length();
             String starting_addr = padStringFront(starting_addr_builder, "0", starting_addr_length, 6);
-            StringBuilder file_size_builder = new StringBuilder(Integer.toHexString(LOCCTR.getLast()-LOCCTR.get(1)));
+
+            StringBuilder file_size_builder = new StringBuilder(Integer.toHexString(LOCCTR.getLast()-program_start));
             int file_size_length = file_size_builder.length();
             String file_size = padStringFront(file_size_builder, "0", file_size_length, 6);
+
             String header = "H" + filename + starting_addr + file_size;
-            objcode_writer.println(header);
+            objcode_writer.append(header);
+            objcode_writer.println();
             //text
             int objcode_line_count = 0;
-            for (int j = 0; j<line_count; j++) {
-                if (file_data[j][1].compareTo("RESW") == 0) {
-                    objcode_line_count++;
+            int starting_location_index = 0;
+            //tracking the byte length of the line
+            int byte_length = 0;
+            StringBuilder curr_line_arr = new StringBuilder();
+            String padded_size = "";
+            for (int j = 0; j<OBJECTCODE.size(); j++) {
+                String curr_objcode = OBJECTCODE.get(j);
+                //2 hex digits = 1 byte
+                int curr_objcode_size = curr_objcode.length() / 2;
+                String next_objcode = "";
+                if (j == OBJECTCODE.size()-1) {
+                    next_objcode = curr_objcode;
+                } else {
+                    next_objcode = OBJECTCODE.get(j + 1);
                 }
-                if (file_data[j][1].compareTo("RESB") == 0) {
-                    objcode_line_count++;
-                }
-            }
-            objcode_line_count += OBJECTCODE.size();
-            int ten_mults = (int) Math.floor((objcode_line_count-1) / 10);
-            //int remainder = line_count % 10;
-            int current_index = 0;
-            for (int j = 0; j<ten_mults; j++) {
-                String text_line = "T";
-                int starting_location = 0;
-                String starting_objcode = "";
-                int ending_location = 0;
-                ArrayList<String> current_line_arr = new ArrayList<>();
-                for (int k = 0; k < 10; k++) {
-                    if (isInTable(Integer.toString(current_index), commentLinesArr) >= 0) {
-                        continue;
-                    }
-                    if (isInTable(Integer.toString(current_index), commentLinesArr) == -1) {
-                        current_line_arr.add(OBJECTCODE.get(current_index));
-                        current_index++;
-                    } else {
-                        current_line_arr.add("");
-                        current_index++;
-                    }
+                //2 hex digits = 1 byte
+                int next_objcode_size = next_objcode.length() / 2;
 
-                }
-                for (int k = 0; k<current_line_arr.size(); k++) {
-                    if (!current_line_arr.get(k).isEmpty()) {
-                        starting_objcode = current_line_arr.get(k);
-                        starting_location = (LOCCTR.get(isInTable(starting_objcode, OBJECTCODE.toArray(new String[0]))));
-                        break;
+                //i cant for the life of me figure out how the sic/xe object file is created, maybe it differs because its relocatable in the slides
+                if ((byte_length > 0 && byte_length + next_objcode_size > 30) || (objcode_line_count == 10)) {
+                    if (objcode_line_count > 0) {
+                        String starting_location = objcodelocations.get(starting_location_index);
+                        //pad to 2 digits in case sigit digit byte size
+                        //after this entire assignment i finally figure out you can just do "new StringBuilder(string)" instead of making a whole new stringbuilder...
+                        String curr_objcode_size_hex = Integer.toHexString(byte_length);
+                        padded_size = padStringFront(new StringBuilder(curr_objcode_size_hex), "0", curr_objcode_size_hex.length(), 2);
+                        String padded_starting_location = padStringFront(new StringBuilder(starting_location), "0", starting_location.length(), 6);
+                        objcode_writer.println("T" + padded_starting_location + curr_objcode_size_hex + curr_line_arr.toString());
+
                     }
+                    objcode_line_count = 0;
+                    byte_length = 0;
+                    //emptying it in a not so desirable way
+                    curr_line_arr.setLength(0);
+                    starting_location_index = j;
                 }
-                ending_location = LOCCTR.get(current_index);
-                String size = Integer.toHexString(ending_location-starting_location);
-                StringBuilder startlocbuilder = new StringBuilder(Integer.toHexString(starting_location));
-                objcode_writer.append(text_line + padStringFront(startlocbuilder, "0", startlocbuilder.length(), 6) + size);
-                for (int k=0; k<current_line_arr.size(); k++) {
-                    objcode_writer.append(current_line_arr.get(k));
-                }
-                objcode_writer.println();
+                curr_line_arr.append(curr_objcode);
+                objcode_line_count++;
+                byte_length += curr_objcode_size;
             }
-            String text_line = "T";
-            ArrayList<String> current_line_arr = new ArrayList<>();
-            for (int j=current_index; j<objcode_line_count-1; j++) {
-                for (int k = current_index; k < 10; k++) {
-                    if (isInTable(Integer.toString(current_index), commentLinesArr) >= 0) {
-                        continue;
-                    }
-                    else if (isInTable(Integer.toString(current_index), commentLinesArr) == -1) {
-                        current_line_arr.add(OBJECTCODE.get(current_index));
-                    } else {
-                        current_line_arr.add("");
-                    }
-                }
+            if (objcode_line_count > 0) {
+                String starting_location = objcodelocations.get(starting_location_index);
+
+                String curr_objcode_size_hex = Integer.toHexString(byte_length);
+                padded_size = padStringFront(new StringBuilder(curr_objcode_size_hex), "0", curr_objcode_size_hex.length(), 2);
+                String padded_starting_location = padStringFront(new StringBuilder(starting_location), "0", starting_location.length(), 6);
+
+                objcode_writer.println("T" + padded_starting_location + padded_size + curr_line_arr.toString());
             }
-            ArrayList<String> line_array = new ArrayList<>();
-            int starting_index = 0;
             //end
-            StringBuilder end_file_name = new StringBuilder(ADDRTAB.get(1));
+            StringBuilder end_file_name = new StringBuilder(starting_addr);
             int end_file_length = end_file_name.length();
             String end_file = "E" + padStringFront(end_file_name, "0", end_file_length, 6);
-            objcode_writer.println();
             objcode_writer.append(end_file);
 
             objcode_writer.close();
-
-            System.out.println();
-            System.out.printf("Address Table: (size %d)\n", ADDRTAB.size());
-            for (int i=0; i< ADDRTAB.size(); i++) {
-                System.out.println(ADDRTAB.get(i));
-            }
 
         } catch (FileNotFoundException e) {
             System.out.print("Error: File not found\n");
@@ -1209,6 +1268,7 @@ public class CIS335_Ass4 {
             listing_file.add(hardcodedRegisterNames[i] + " " + hardcodedRegisterInts[i]);
         }
         Files.write(intermediate_file_path, listing_file);
+        System.out.println(objcodelines.size());
     }
 }
 
