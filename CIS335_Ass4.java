@@ -1,4 +1,5 @@
 import java.io.*;
+import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,12 +12,6 @@ import java.util.Scanner;
 //test 2
 
 public class CIS335_Ass4 {
-    public static void writeObjCodeFile(PrintWriter file_writer, String program_name, String starting_address, String length) {
-
-    }
-    public static void writeListingFile(PrintWriter file_writer) {
-
-    }
     //why did i not make this so much sooner? there is string padding literally everywhere in this assignment
     public static String padStringBack(StringBuilder string, String padding, int string_size, int padded_size) {
         if (string_size < padded_size) {
@@ -66,7 +61,22 @@ public class CIS335_Ass4 {
         }
         return index;
     }
-    public static String objcodeCreation(String hexKey, String binaryFlags, int decimalAddress, int format) {
+    public static boolean checkSICvSICXE(String[][] file_data) {
+        boolean sicxe = false;
+        for (int i = 0; i<file_data.length; i++) {
+            if (file_data[i][1].compareTo("BASE") == 0) {
+                sicxe = true;
+                break;
+            }
+            if (file_data[i][1].compareTo("NOBASE") == 0) {
+                sicxe = true;
+                break;
+            }
+
+        }
+        return sicxe;
+    }
+    public static String objcodeCreation(String hexKey, String binaryFlags, int decimalAddress, int format, boolean sicxe) {
         String binaryOpcode = "";
         StringBuilder opcodeBuilder = new StringBuilder();
         //convert opkey to binary
@@ -89,8 +99,18 @@ public class CIS335_Ass4 {
 
 
         //convert address to binary
-
-        int num_figs = Integer.toString(decimalAddress).length() * 4;
+        String num_string = Integer.toString(decimalAddress);
+        int num_figs = 0;
+        if (format == 3) {
+            if (sicxe) {
+                num_figs = 12;
+            } else {
+                num_figs = 15;
+            }
+        }
+        if (format == 4) {
+            num_figs = 20;
+        }
 
         //lol
         String bin_num = Integer.toBinaryString(decimalAddress);
@@ -101,7 +121,6 @@ public class CIS335_Ass4 {
         if (format == 1) {
             bin_num = "";
             binaryFlags = "";
-            num_figs = 0;
         }
         if (format == 2) {
             int num_regs = 2;
@@ -120,11 +139,9 @@ public class CIS335_Ass4 {
         }
         if (format == 3) {
             binaryKey = binaryKeyBuilder.substring(0,6);
-            num_figs = 12;
         }
         if (format == 4) {
             binaryKey = binaryKeyBuilder.substring(0,6);
-            num_figs = 20;
         }
 
         int bin_len = bin_num.length();
@@ -165,6 +182,9 @@ public class CIS335_Ass4 {
             registerbuilder.append(register2);
             opcode = registerbuilder.toString();
         }
+        if ((opcode.length() == 4) && (format == 3)) {
+            opcode = "00" + opcode;
+        }
         return opcode;
     }
     public static void main(String[] args) {
@@ -179,19 +199,20 @@ public class CIS335_Ass4 {
             reader.close();
 
 
-            boolean base = false;
+            boolean base = true;
+            boolean sicxe = false;
             int line_count = 0;
             int location_counter = 0;
             String base_num = "";
             DecimalFormat location_format = new DecimalFormat("0000");
             String[][] file_data = new String[lines][10];
             ArrayList<String> SYMTAB = new ArrayList<>();
-            String[] symtab_arr = {};
             ArrayList<String> OBJECTCODE = new ArrayList<>();
             ArrayList<Integer> objcodelines = new ArrayList<>();
             List<String> listing_file = new ArrayList<>();
             ArrayList<Integer> ADDRTAB = new ArrayList<>();
             ArrayList<Integer> LOCCTR = new ArrayList<>();
+
             ArrayList<Integer> commentLines = new ArrayList<>();
             String[] opTable = {
                     "ADD", "ADDF", "ADDR", "AND",
@@ -330,16 +351,67 @@ public class CIS335_Ass4 {
             } catch (FileNotFoundException e) {
                 System.out.printf("Could not read from file name: %s\n", file_name);
             }
-
+            //check file for base or nobase to determine if the file is sic or not sicxe
+            sicxe = checkSICvSICXE(file_data);
             //start doing format checking
-            for (int i=0; i<line_count; i++) {
-                if (!file_data[i][0].isEmpty()) {
-                    if (file_data[i][0].charAt(0) == '.') {
-                        commentLines.add(i);
-                        LOCCTR.add(location_counter);
-                        intermediate_writer.printf("%s\t\t%s%s\n", file_data[i][0], file_data[i][1], file_data[i][2]);
+            if (sicxe) {
+                for (int i = 0; i < line_count; i++) {
+                    if (!file_data[i][0].isEmpty()) {
+                        if (file_data[i][0].charAt(0) == '.') {
+                            commentLines.add(i);
+                            LOCCTR.add(location_counter);
+                            intermediate_writer.printf("%s\t\t%s%s\n", file_data[i][0], file_data[i][1], file_data[i][2]);
+                        } else {
+                            if (i == line_count - 1) {
+                                if (file_data[i][0].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                                } else {
+                                    intermediate_writer.printf("%s\t", file_data[i][0]);
+                                }
+                                if (file_data[i][1].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                                } else {
+                                    intermediate_writer.printf("%s\t", file_data[i][1]);
+                                }
+                                if (file_data[i][2].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                                }
+                                //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
+                                else if (file_data[i][2].length() < 8) {
+                                    intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                                } else {
+                                    intermediate_writer.printf("%s\n", file_data[i][2]);
+                                }
+                            } else {
+                                ADDRTAB.add(location_counter);
+                                if ((location_counter - 1000) < 0) {
+                                    intermediate_writer.printf("%s\t\t", Integer.toHexString(location_counter));
+                                } else {
+                                    intermediate_writer.printf("%s\t", Integer.toHexString(location_counter));
+                                }
+                                if (file_data[i][0].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                                } else {
+                                    intermediate_writer.printf("%s\t", file_data[i][0]);
+                                }
+                                if (file_data[i][1].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                                } else {
+                                    intermediate_writer.printf("%s\t", file_data[i][1]);
+                                }
+                                if (file_data[i][2].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                                }
+                                //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
+                                else if (file_data[i][2].length() < 8) {
+                                    intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                                } else {
+                                    intermediate_writer.printf("%s\n", file_data[i][2]);
+                                }
+                            }
+                        }
                     } else {
-                        if (i == line_count-1) {
+                        if (i == line_count - 1) {
                             if (file_data[i][0].length() < 4) {
                                 intermediate_writer.printf("%s\t\t", file_data[i][0]);
                             } else {
@@ -354,13 +426,12 @@ public class CIS335_Ass4 {
                                 intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
                             }
                             //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
-                            else if (file_data[i][2].length() < 8){
+                            else if (file_data[i][2].length() < 8) {
                                 intermediate_writer.printf("%s\t\n", file_data[i][2]);
                             } else {
                                 intermediate_writer.printf("%s\n", file_data[i][2]);
                             }
                         } else {
-                            ADDRTAB.add(location_counter);
                             if ((location_counter - 1000) < 0) {
                                 intermediate_writer.printf("%s\t\t", Integer.toHexString(location_counter));
                             } else {
@@ -380,200 +451,569 @@ public class CIS335_Ass4 {
                                 intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
                             }
                             //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
-                            else if (file_data[i][2].length() < 8){
+                            else if (file_data[i][2].length() < 8) {
                                 intermediate_writer.printf("%s\t\n", file_data[i][2]);
                             } else {
                                 intermediate_writer.printf("%s\n", file_data[i][2]);
                             }
                         }
                     }
-                }
-                else {
-                    if (i == line_count - 1) {
-                        if (file_data[i][0].length() < 4) {
-                            intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                    String opcode = file_data[i][1];
+                    if (opcode.compareTo("START") == 0) {
+                        location_counter = Integer.parseInt(file_data[i][2], 16);
+                    } else if (opcode.compareTo("BYTE") == 0) {
+                        if (file_data[i][2].charAt(0) == 'C') {
+                            location_counter += file_data[i][2].substring(2, file_data[i][2].length() - 1).length();
                         } else {
-                            intermediate_writer.printf("%s\t", file_data[i][0]);
+                            location_counter += 1;
                         }
-                        if (file_data[i][1].length() < 4) {
-                            intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                    } else if (opcode.compareTo("WORD") == 0) {
+                        location_counter += 3;
+                    } else if (opcode.compareTo("RESB") == 0) {
+                        location_counter += Integer.parseInt(file_data[i][2]);
+                    } else if (opcode.compareTo("RESW") == 0) {
+                        location_counter += Integer.parseInt(file_data[i][2]) * 3;
+                    } else if (opcode.compareTo("END") == 0) {
+                    } else if (opcode.compareTo("BASE") == 0) {
+                        //base = true;
+                        if (file_data[i][2].charAt(0) == '#') {
+                            base_num = file_data[i][2].substring(1);
                         } else {
-                            intermediate_writer.printf("%s\t", file_data[i][1]);
+                            base_num = file_data[i][2];
                         }
-                        if (file_data[i][2].length() < 4) {
-                            intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
-                        }
-                        //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
-                        else if (file_data[i][2].length() < 8){
-                            intermediate_writer.printf("%s\t\n", file_data[i][2]);
-                        } else {
-                            intermediate_writer.printf("%s\n", file_data[i][2]);
-                        }
-                    }
-                    else {
-                        if ((location_counter - 1000) < 0) {
-                            intermediate_writer.printf("%s\t\t", Integer.toHexString(location_counter));
-                        } else {
-                            intermediate_writer.printf("%s\t", Integer.toHexString(location_counter));
-                        }
-                        if (file_data[i][0].length() < 4) {
-                            intermediate_writer.printf("%s\t\t", file_data[i][0]);
-                        } else {
-                            intermediate_writer.printf("%s\t", file_data[i][0]);
-                        }
-                        if (file_data[i][1].length() < 4) {
-                            intermediate_writer.printf("%s\t\t", file_data[i][1]);
-                        } else {
-                            intermediate_writer.printf("%s\t", file_data[i][1]);
-                        }
-                        if (file_data[i][2].length() < 4) {
-                            intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
-                        }
-                        //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
-                        else if (file_data[i][2].length() < 8){
-                            intermediate_writer.printf("%s\t\n", file_data[i][2]);
-                        } else {
-                            intermediate_writer.printf("%s\n", file_data[i][2]);
-                        }
-                    }
-                }
-
-                String opcode = file_data[i][1];
-                if (opcode.compareTo("START") == 0) {
-                    location_counter = Integer.parseInt(file_data[i][2]);
-                }
-                else if (opcode.compareTo("BYTE") == 0) {
-                    if (file_data[i][2].charAt(0) == 'C') {
-                        location_counter += file_data[i][2].substring(2,file_data[i][2].length()-1).length();
+                    } else if (opcode.compareTo("NOBASE") == 0) {
+                        base = false;
                     } else {
-                        location_counter += 1;
+                        if (opcode.isEmpty()) {
+                            continue;
+                        }
+                        int j;
+                        if (!file_data[i][0].isEmpty()) {
+                            if (file_data[i][0].charAt(0) == '.') {
+                                continue;
+                            }
+                        }
+                        for (j = 0; j < opTable.length; j++) {
+                            if (opcode.charAt(0) == '+') {
+                                opcode = opcode.substring(1);
+                                location_counter += 1;
+                            }
+                            //if the opcode at line i is equal to a mnemonic in the table
+                            if (opTable[j].compareTo(opcode) == 0) {
+                                if (opFormats[j] == 1) {
+                                    location_counter += 1;
+                                } else if (opFormats[j] == 2) {
+                                    location_counter += 2;
+                                } else if (opFormats[j] == 3) {
+
+                                    location_counter += 3;
+                                } else {
+                                    System.out.printf("Error: Format not available for %s\n", opcode);
+                                    System.exit(402);
+                                }
+                                break;
+                            }
+                        }
+                        if (j == opTable.length) {
+                            System.out.printf("OPCODE not found in table: %s", opcode);
+                            System.exit(1);
+                        }
                     }
+                    LOCCTR.add(location_counter);
                 }
-                else if (opcode.compareTo("WORD") == 0) {
-                    location_counter += 3;
-                }
-                else if (opcode.compareTo("RESB") == 0) {
-                    location_counter += Integer.parseInt(file_data[i][2]);
-                }
-                else if (opcode.compareTo("RESW") == 0) {
-                    location_counter += Integer.parseInt(file_data[i][2]) * 3;
-                }
-                else if (opcode.compareTo("END") == 0) {
-                }
-                else if (opcode.compareTo("BASE") == 0) {
-                    base = true;
-                    if (file_data[i][2].charAt(0) == '#') {
-                        base_num = file_data[i][2].substring(1);
-                    }
-                    else {
-                        base_num = file_data[i][2];
-                    }
-                }
-                else if (opcode.compareTo("NOBASE") == 0) {
-                    base = false;
-                }
+            }
                 else {
-                    if (opcode.isEmpty()) {
-                        continue;
-                    }
-                    int j;
+                    for (int i=0; i<line_count; i++) {
+                        if (!file_data[i][0].isEmpty()) {
+                            if (file_data[i][0].charAt(0) == '.') {
+                                commentLines.add(i);
+                                LOCCTR.add(location_counter);
+                                intermediate_writer.printf("%s\t\t%s%s\n", file_data[i][0], file_data[i][1], file_data[i][2]);
+                            } else {
+                                if (i == line_count - 1) {
+                                    if (file_data[i][0].length() < 4) {
+                                        intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                                    } else {
+                                        intermediate_writer.printf("%s\t", file_data[i][0]);
+                                    }
+                                    if (file_data[i][1].length() < 4) {
+                                        intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                                    } else {
+                                        intermediate_writer.printf("%s\t", file_data[i][1]);
+                                    }
+                                    if (file_data[i][2].length() < 4) {
+                                        intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                                    }
+                                    //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
+                                    else if (file_data[i][2].length() < 8) {
+                                        intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                                    } else {
+                                        intermediate_writer.printf("%s\n", file_data[i][2]);
+                                    }
+                                } else {
+                                    ADDRTAB.add(location_counter);
+                                    if ((location_counter - 1000) < 0) {
+                                        intermediate_writer.printf("%s\t\t", Integer.toHexString(location_counter));
+                                    } else {
+                                        intermediate_writer.printf("%s\t", Integer.toHexString(location_counter));
+                                    }
+                                    if (file_data[i][0].length() < 4) {
+                                        intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                                    } else {
+                                        intermediate_writer.printf("%s\t", file_data[i][0]);
+                                    }
+                                    if (file_data[i][1].length() < 4) {
+                                        intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                                    } else {
+                                        intermediate_writer.printf("%s\t", file_data[i][1]);
+                                    }
+                                    if (file_data[i][2].length() < 4) {
+                                        intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                                    }
+                                    //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
+                                    else if (file_data[i][2].length() < 8) {
+                                        intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                                    } else {
+                                        intermediate_writer.printf("%s\n", file_data[i][2]);
+                                    }
+                                }
+                            }
+                        } else {
+                            if (i == line_count - 1) {
+                                if (file_data[i][0].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                                } else {
+                                    intermediate_writer.printf("%s\t", file_data[i][0]);
+                                }
+                                if (file_data[i][1].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                                } else {
+                                    intermediate_writer.printf("%s\t", file_data[i][1]);
+                                }
+                                if (file_data[i][2].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                                }
+                                //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
+                                else if (file_data[i][2].length() < 8) {
+                                    intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                                } else {
+                                    intermediate_writer.printf("%s\n", file_data[i][2]);
+                                }
+                            } else {
+                                if ((location_counter - 1000) < 0) {
+                                    intermediate_writer.printf("%s\t\t", Integer.toHexString(location_counter));
+                                } else {
+                                    intermediate_writer.printf("%s\t", Integer.toHexString(location_counter));
+                                }
+                                if (file_data[i][0].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t", file_data[i][0]);
+                                } else {
+                                    intermediate_writer.printf("%s\t", file_data[i][0]);
+                                }
+                                if (file_data[i][1].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t", file_data[i][1]);
+                                } else {
+                                    intermediate_writer.printf("%s\t", file_data[i][1]);
+                                }
+                                if (file_data[i][2].length() < 4) {
+                                    intermediate_writer.printf("%s\t\t\n", file_data[i][2]);
+                                }
+                                //operand can be 8 characters long max if indexed addressing is used and a label of 6 characters is used
+                                else if (file_data[i][2].length() < 8) {
+                                    intermediate_writer.printf("%s\t\n", file_data[i][2]);
+                                } else {
+                                    intermediate_writer.printf("%s\n", file_data[i][2]);
+                                }
+                            }
+                        }
+                    String opcode = file_data[i][1];
                     if (!file_data[i][0].isEmpty()) {
                         if (file_data[i][0].charAt(0) == '.') {
+                            LOCCTR.add(location_counter);
                             continue;
                         }
                     }
-                    for (j = 0; j < opTable.length; j++) {
-                        if (opcode.charAt(0) == '+') {
-                            opcode = opcode.substring(1);
+                    if (opcode.compareTo("START") == 0) {
+                        location_counter = Integer.parseInt(file_data[i][2], 16);
+                    } else if (opcode.compareTo("BYTE") == 0) {
+                        if (file_data[i][2].charAt(0) == 'C') {
+                            location_counter += file_data[i][2].substring(2, file_data[i][2].length() - 1).length();
+                        } else {
                             location_counter += 1;
                         }
-                        //if the opcode at line i is equal to a mnemonic in the table
-                        if (opTable[j].compareTo(opcode) == 0) {
-                            if (opFormats[j] == 1) {
-                                location_counter += 1;
-                            }
-                            else if (opFormats[j] == 2) {
-                                location_counter += 2;
-                            }
-                            else if (opFormats[j] == 3) {
-
-                                location_counter += 3;
-                            } else {
-                                System.out.printf("Error: Format not available for %s\n", opcode);
-                                System.exit(402);
-                            }
-                            break;
-                        }
+                    } else if (opcode.compareTo("WORD") == 0) {
+                        location_counter += 3;
+                    } else if (opcode.compareTo("RESB") == 0) {
+                        location_counter += Integer.parseInt(file_data[i][2]);
+                    } else if (opcode.compareTo("RESW") == 0) {
+                        location_counter += Integer.parseInt(file_data[i][2]) * 3;
                     }
-                    if (j == opTable.length) {
-                        System.out.printf("OPCODE not found in table: %s", opcode);
-                        System.exit(1);
+                    else {
+                        location_counter += 3;
                     }
+                    LOCCTR.add(location_counter);
                 }
-                LOCCTR.add(location_counter);
             }
-
             //System.out.printf("TEST: %s\n", objcodeCreation(opKeys[getKeyIndex("STL", opTable)], "110010", 45, 3));
-
+            String[] symtab_arr = new String[SYMTAB.size()];
             intermediate_writer.printf("\nSymbol Table: (size %d)\n", SYMTAB.size());
             for (int i=0; i< SYMTAB.size(); i++) {
                 intermediate_writer.println(SYMTAB.get(i));
+                symtab_arr[i] = SYMTAB.get(i);
+            }
+            String[] locctr_arr = new String[LOCCTR.size()];
+            for (int i=0; i< LOCCTR.size(); i++) {
+                locctr_arr[i] = Integer.toString(LOCCTR.get(i));
+            }
+            String[] commentLinesArr = new String[commentLines.size()];
+            for (int i=0; i< commentLines.size(); i++) {
+                commentLinesArr[i] = Integer.toString(commentLines.get(i));
             }
             intermediate_writer.close();
-
             //pass 2
-            for (int i = 0; i<line_count-1; i++) {
+            if (sicxe) {
+                for (int i = 0; i < line_count - 1; i++) {
 
-                //check if the line is a comment line
-                boolean isComment = false;
-                for (int c = 0; c < commentLines.size(); c++) {
-                    if (i == commentLines.get(c)) {
-                        isComment = true;
-                    }
-                }
-                if (isComment) {
-                    continue;
-                }
-                //variable init
-                String label = file_data[i][0];
-                String opcode = file_data[i][1];
-                int opcodeIndex = getKeyIndex(opcode, opTable);
-                String operand = file_data[i][2];
-                String nixbpe = "000000";
-                target_address = LOCCTR.get(i);
-                program_counter = LOCCTR.get(i);
-                String[] arguments = operand.split(",");
-                int numargs = arguments.length;
-
-
-                if (opcode.compareTo("BYTE") == 0) {
-                    //convert necessary byte data into an array of characters to manipulate with an external method
-                    char[] byte_data = operand.substring(2,operand.length()-1).toCharArray();
-                    StringBuilder byte_code = new StringBuilder();
-                    if (operand.charAt(0) == 'C') {
-                        byte_code.append(literalCharacterConversion(byte_data));
-                        OBJECTCODE.add(byte_code.toString());
-                        objcodelines.add(i);
-                    } else if (operand.charAt(0) == 'X') {
-                        System.out.print("TEST: ");
-                        for (int p=0; p<byte_data.length;p++){
-                            byte_code.append(byte_data[p]);
+                    //check if the line is a comment line
+                    boolean isComment = false;
+                    for (int c = 0; c < commentLines.size(); c++) {
+                        if (i == commentLines.get(c)) {
+                            isComment = true;
                         }
-                        OBJECTCODE.add(byte_code.toString());
+                    }
+                    if (isComment) {
+                        continue;
+                    }
+                    //variable init
+                    String label = file_data[i][0];
+                    String opcode = file_data[i][1];
+                    int opcodeIndex = getKeyIndex(opcode, opTable);
+                    String operand = file_data[i][2];
+                    String original_operand = operand;
+                    String nixbpe = "000000";
+                    boolean indexing = false;
+                    target_address = LOCCTR.get(i);
+                    program_counter = LOCCTR.get(i);
+                    String[] arguments = operand.split(",");
+                    int numargs = arguments.length;
+                    if (operand.length() > 2) {
+                        if (operand.substring(operand.length() - 2).compareTo(",X") == 0) {
+                            indexing = true;
+                            operand = operand.substring(0, operand.length() - 2);
+                        }
+                    }
+
+                    if (opcode.compareTo("WORD") == 0) {
+                        StringBuilder word_builder = new StringBuilder(Integer.parseInt(operand));
+                        OBJECTCODE.add(padStringFront(word_builder, "0", operand.length(), 6));
+                    }
+                    else if (opcode.compareTo("BYTE") == 0) {
+                        //convert necessary byte data into an array of characters to manipulate with an external method
+                        char[] byte_data = operand.substring(2, operand.length() - 1).toCharArray();
+                        StringBuilder byte_code = new StringBuilder();
+                        if (original_operand.charAt(0) == 'C') {
+                            byte_code.append(literalCharacterConversion(byte_data));
+                            OBJECTCODE.add(byte_code.toString());
+                            objcodelines.add(i);
+                        } else if (original_operand.charAt(0) == 'X') {
+                            for (int p = 0; p < byte_data.length; p++) {
+                                byte_code.append(byte_data[p]);
+                            }
+                            OBJECTCODE.add(byte_code.toString());
+                            objcodelines.add(i);
+                        } else {
+                            System.out.println("Error. Literal format not supported (Must be C or X).");
+                        }
+                    }
+                    else if (opcode.charAt(0) == '+') {
+                        if (isInTable(opcode.substring(1), opTable) >= 0) {
+                            if (operand.isEmpty()) {
+                                nixbpe = "110000";
+                                format = opFormats[getKeyIndex(opcode.substring(1), opTable)];
+                                //check for format
+                            } else if (opFormats[getKeyIndex(opcode.substring(1), opTable)] == 1) {
+                                format = 1;
+                            } else if (opFormats[getKeyIndex(opcode.substring(1), opTable)] == 2) {
+                                format = 2;
+                                for (int r = 0; r < hardcodedRegisterNames.length; r++) {
+                                    if (opExpectedArgs[opcodeIndex] == 0) {
+                                        address = 0;
+                                    }
+                                    if (opExpectedArgs[opcodeIndex] == 1) {
+
+                                        for (int a = 0; a < 1; a++) {
+                                            index = isInTable(arguments[a], SYMTAB.toArray(symtab_arr));
+                                            if (index >= 0) {
+                                                address = hardcodedRegisterInts[index];
+                                            }
+                                        }
+                                    }
+                                    if (opExpectedArgs[opcodeIndex] == 2) {
+                                        for (int a = 0; a < 2; a++) {
+                                            index = isInTable(arguments[a], SYMTAB.toArray(symtab_arr));
+                                            if (index >= 0) {
+                                                address = hardcodedRegisterInts[index];
+                                            }
+                                        }
+                                    }
+                                }
+                            } else //(opFormats[getKeyIndex(opcode, opTable)] == 3)
+                            {
+                                if (original_operand.charAt(0) == '#') {
+                                    int symbol_index = isInTable(operand.substring(1), SYMTAB.toArray(symtab_arr));
+                                    if (symbol_index >= 0) {
+                                        target_address = ADDRTAB.get(symbol_index);
+                                    } else {
+                                        target_address = Integer.parseInt(operand.substring(1));
+                                    }
+                                    address = target_address;
+                                    if ((0 <= address) && (address <= 4095)) {
+                                        nixbpe = "010000";
+                                        format = 3;
+                                    } else if ((4096 <= address) && (address <= 1048575) && (opcode.charAt(0) == '+')) {
+                                        nixbpe = "010001";
+                                        format = 4;
+                                    } else {
+                                        System.out.println("Error: Immediate number out of range");
+                                        System.exit(405);
+                                    }
+                                } else {
+                                    int symbol_index = isInTable(operand, SYMTAB.toArray(symtab_arr));
+                                    if (symbol_index >= 0) {
+                                        target_address = ADDRTAB.get(symbol_index);
+                                    }
+                                    address = target_address;
+                                    if (opcode.charAt(0) == '+') {
+                                        nixbpe = "110001";
+                                        format = 4;
+
+                                    } else if ((-2048 <= address) && (address <= 2047)) {
+                                        System.out.println("pc relative");
+                                        nixbpe = "110010";
+                                        format = 3;
+                                    } else if (base) {
+                                        int base_val;
+                                        //reassign to base eventually
+                                        int base_symbol_index = isInTable(base_num, SYMTAB.toArray(symtab_arr));
+                                        if (symbol_index >= 0) {
+                                            base_val = ADDRTAB.get(base_symbol_index);
+                                        } else {
+                                            base_val = Integer.parseInt(base_num);
+                                        }
+                                        //program_counter = 0;
+                                        if ((0 <= target_address - base_val) && (base_val <= 4095)) {
+                                            address = target_address - base_val;
+                                            nixbpe = "110100";
+                                            format = 3;
+                                        }
+                                    } else {
+                                        System.out.println("Error: instruction addressing error.");
+                                        System.exit(409);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else if (isInTable(opcode, opTable) >= 0) {
+                        if (isInTable(opcode, opTable) >= 0) {
+                            if (operand.isEmpty()) {
+                                nixbpe = "110000";
+                                format = opFormats[getKeyIndex(opcode, opTable)];
+                            } else if (opFormats[getKeyIndex(opcode, opTable)] == 1) {
+                                format = 1;
+
+                            } else if (opFormats[getKeyIndex(opcode, opTable)] == 2) {
+                                format = 2;
+                                StringBuilder registerbuilder = new StringBuilder();
+                                for (int r = 0; r < hardcodedRegisterNames.length; r++) {
+                                    for (int a = 0; a < arguments.length; a++) {
+                                        if (arguments[a].compareTo(hardcodedRegisterNames[r]) == 0) {
+                                            registerbuilder.append(hardcodedRegisterInts[r]);
+                                        }
+                                    }
+                                }
+                                if (arguments.length < 2) {
+                                    for (int a = 0; a < (2 - arguments.length); a++) {
+                                        registerbuilder.append("0");
+                                    }
+                                }
+                                address = Integer.parseInt(registerbuilder.toString());
+                            } else //(opFormats[getKeyIndex(opcode, opTable)] == 3)
+                            {
+                                //if the operand is empty
+                                if (original_operand.charAt(0) == '#') {
+                                    int symbol_index = isInTable(operand.substring(1), SYMTAB.toArray(symtab_arr));
+                                    if (symbol_index >= 0) {
+                                        target_address = ADDRTAB.get(symbol_index);
+                                    } else {
+                                        target_address = Integer.parseInt(operand.substring(1));
+                                    }
+                                    address = target_address - program_counter;
+                                    if ((0 <= target_address) && (target_address <= 4095)) {
+                                        //if it isnt an immediate numeric the computer needs to know as much (pc relative here)
+                                        //if it is, the address can just be that immediate numeric
+                                        if (symbol_index < 0) {
+                                            address = target_address;
+                                            nixbpe = "010000";
+                                        } else {
+                                            nixbpe = "010010";
+                                        }
+                                        format = 3;
+                                    } else if ((4096 <= target_address) && (target_address <= 1048575) && (opcode.charAt(0) == '+')) {
+                                        nixbpe = "010001";
+                                        format = 4;
+                                    } else {
+                                        System.out.println(address);
+                                        System.out.println("Error: Immediate number out of range");
+                                        System.exit(405);
+                                    }
+                                } else {
+                                    if (original_operand.charAt(0) == '@') {
+                                        operand = operand.substring(1);
+                                    }
+                                    int symbol_index = isInTable(operand, symtab_arr);
+                                    if (symbol_index >= 0) {
+                                        target_address = ADDRTAB.get(symbol_index);
+                                    }
+
+                                    address = target_address - program_counter;
+
+                                    if (opcode.charAt(0) == '+') {
+                                        nixbpe = "110001";
+                                        format = 4;
+                                    } else if ((-2048 <= address) && (address <= 2047)) {
+                                        nixbpe = "110010";
+                                        format = 3;
+                                    } else if (base) {
+                                        int base_val = 0;
+                                        int base_symbol_index = -1;
+                                        //reassign to base eventually
+                                        if (base_num.compareTo("") != 0) {
+                                            base_symbol_index = isInTable(base_num, symtab_arr);
+                                        } else if (isInTable(operand, symtab_arr) >= 0) {
+                                            base_num = Integer.toString(ADDRTAB.get(isInTable(operand, symtab_arr)));
+                                        }
+                                        if (base_symbol_index >= 0) {
+                                            base_val = ADDRTAB.get(base_symbol_index);
+                                        } else {
+                                            if (base_num.compareTo("") != 0) {
+                                                base_val = Integer.parseInt(base_num);
+                                            }
+                                        }
+                                        //program_counter = 0;
+                                        if ((0 <= target_address - base_val) && (target_address - base_val <= 4095)) {
+                                            address = target_address - base_val;
+                                            nixbpe = "110100";
+                                            format = 3;
+                                        }
+                                    } else {
+                                        System.out.println("Error: instruction addressing error.");
+                                        System.exit(409);
+                                    }
+                                }
+                            }
+                        }
+                    } else if (isInTable(opcode, symtab_arr) >= 0) {
+                        OBJECTCODE.add("");
+                        objcodelines.add(i);
+                    }
+                    if (!original_operand.isEmpty()) {
+                        if (original_operand.charAt(0) == '#') {
+                            nixbpe = '0' + nixbpe.substring(1);
+                        }
+                        if (original_operand.charAt(0) == '@') {
+                            nixbpe = nixbpe.substring(0, 1) + '0' + nixbpe.substring(2);
+                        }
+                    }
+                    if (opcodeIndex >= 0) {
+                        if (indexing) {
+                            nixbpe = nixbpe.substring(0, 2) + '1' + nixbpe.substring(3);
+                        }
+                    }
+
+
+                    if (opcode.charAt(0) == '+') {
+                        opcodeIndex = getKeyIndex(opcode.substring(1), opTable);
+                        if (opcodeIndex != -1) {
+                            String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format, sicxe);
+                            OBJECTCODE.add(objcode);
+                            objcodelines.add(i);
+                        }
+                    } else if (operand.isEmpty()) {
+                        String objcode = objcodeCreation(opKeys[opcodeIndex], "110000", 0, format, sicxe);
+                        OBJECTCODE.add(objcode);
                         objcodelines.add(i);
                     } else {
-                        System.out.println("Error. Literal format not supported (Must be C or X).");
+                        if (opcodeIndex != -1) {
+                            String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format, sicxe);
+                            OBJECTCODE.add(objcode);
+                            objcodelines.add(i);
+                        }
                     }
                 }
-                if (opcode.charAt(0) == '+') {
-                    if (isInTable(opcode.substring(1), opTable) >= 0) {
-                        if (operand.isEmpty()) {
-                            nixbpe = "110000";
-                            format = opFormats[getKeyIndex(opcode.substring(1), opTable)];
-                            //check for format
-                        } else if (opFormats[getKeyIndex(opcode.substring(1), opTable)] == 1) {
+            }
+            //sic
+            else {
+                for (int i = 0; i < line_count - 1; i++) {
+                    //check if the line is a comment line
+                    boolean isComment = false;
+                    for (int c = 0; c < commentLines.size(); c++) {
+                        if (i == commentLines.get(c)) {
+                            isComment = true;
+                        }
+                    }
+                    if (isComment) {
+                        continue;
+                    }
+                    //variable init
+                    String label = file_data[i][0];
+                    String opcode = file_data[i][1];
+                    int opcodeIndex = getKeyIndex(opcode, opTable);
+                    String operand = file_data[i][2];
+                    String original_operand = operand;
+                    String nixbpe = "000";
+                    boolean indexing = false;
+                    target_address = LOCCTR.get(i);
+                    program_counter = LOCCTR.get(i);
+                    String[] arguments = operand.split(",");
+                    int numargs = arguments.length;
+                    if (operand.length() > 2) {
+                        if (operand.substring(operand.length() - 2).compareTo(",X") == 0) {
+                            indexing = true;
+                            operand = operand.substring(0, operand.length() - 2);
+                        }
+                    }
+                    if (opcode.compareTo("WORD") == 0) {
+                        StringBuilder word_builder = new StringBuilder(Integer.toHexString(Integer.parseInt(operand)));
+                        OBJECTCODE.add(padStringFront(word_builder, "0", operand.length(), 6));
+                        objcodelines.add(i);
+                    }
+                    if (opcode.compareTo("BYTE") == 0) {
+                        //convert necessary byte data into an array of characters to manipulate with an external method
+                        char[] byte_data = operand.substring(2, operand.length() - 1).toCharArray();
+                        StringBuilder byte_code = new StringBuilder();
+                        if (original_operand.charAt(0) == 'C') {
+                            byte_code.append(literalCharacterConversion(byte_data));
+                            OBJECTCODE.add(byte_code.toString());
+                            objcodelines.add(i);
+                        } else if (original_operand.charAt(0) == 'X') {
+                            for (int p = 0; p < byte_data.length; p++) {
+                                byte_code.append(byte_data[p]);
+                            }
+                            OBJECTCODE.add(byte_code.toString());
+                            objcodelines.add(i);
+                        } else {
+                            System.out.println("Error. Literal format not supported (Must be C or X).");
+                        }
+                    }
+                    if (isInTable(opcode, symtab_arr) >= 0 ) {
+                        OBJECTCODE.add("");
+                        objcodelines.add(i);
+                    }
+                    if (isInTable(opcode, opTable) >= 0) {
+                        if (opFormats[getKeyIndex(opcode, opTable)] == 1) {
                             format = 1;
-                        } else if (opFormats[getKeyIndex(opcode.substring(1), opTable)] == 2) {
+                        } else if (opFormats[getKeyIndex(opcode, opTable)] == 2) {
                             format = 2;
                             for (int r = 0; r < hardcodedRegisterNames.length; r++) {
                                 if (opExpectedArgs[opcodeIndex] == 0) {
@@ -597,188 +1037,48 @@ public class CIS335_Ass4 {
                                     }
                                 }
                             }
-                        } else //(opFormats[getKeyIndex(opcode, opTable)] == 3)
-                            {
-                                if (operand.charAt(0) == '#') {
-                                    int symbol_index = isInTable(operand.substring(1), SYMTAB.toArray(symtab_arr));
-                                    if (symbol_index >= 0) {
-                                        target_address = ADDRTAB.get(symbol_index);
-                                    } else {
-                                        target_address = Integer.parseInt(operand.substring(1));
-                                    }
-                                    address = target_address;
-                                    if ((0 <= address) && (address <= 4095)) {
-                                        nixbpe = "010000";
-                                        format = 3;
-                                    } else if ((4096 <= address) && (address <= 1048575) && (opcode.charAt(0) == '+')) {
-                                        nixbpe = "010001";
-                                        format = 4;
-                                    } else {
-                                        System.out.println("Error: Immediate number out of range");
-                                        System.exit(405);
-                                    }
-                            } else {
-                                int symbol_index = isInTable(operand, SYMTAB.toArray(symtab_arr));
-                                if (symbol_index >= 0) {
-                                    target_address = ADDRTAB.get(symbol_index);
-                                }
-                                address = target_address;
-                                if (opcode.charAt(0) == '+') {
-                                    nixbpe = "110001";
-                                    format = 4;
-
-                                } else if ((-2048 <= address) && (address <= 2047)) {
-                                    System.out.println("pc relative");
-                                    nixbpe = "110010";
-                                    format = 3;
-                                } else if (base) {
-                                    int base_val;
-                                    //reassign to base eventually
-                                    int base_symbol_index = isInTable(base_num, SYMTAB.toArray(symtab_arr));
-                                    if (symbol_index >= 0) {
-                                        base_val = ADDRTAB.get(base_symbol_index);
-                                    } else {
-                                        base_val = Integer.parseInt(base_num);
-                                    }
-                                    //program_counter = 0;
-                                    if ((0 <= target_address - base_val) && (base_val<= 4095)) {
-                                        address = target_address - base_val;
-                                        nixbpe = "110100";
-                                        format = 3;
-                                    }
-                                } else {
-                                    System.out.println("Error: instruction addressing error.");
-                                    System.exit(409);
-                                }
-                            }
                         }
+                    } else {
+                        format = 3;
                     }
-                } else {
                     if (isInTable(opcode, opTable) >= 0) {
-                        if (operand.isEmpty()) {
-                            nixbpe = "110000";
-                            format = opFormats[getKeyIndex(opcode, opTable)];
-                        } else if (opFormats[getKeyIndex(opcode, opTable)] == 1) {
-                            format = 1;
-
-                        } else if (opFormats[getKeyIndex(opcode, opTable)] == 2) {
-                            format = 2;
-                            StringBuilder registerbuilder = new StringBuilder();
-                            for (int r = 0; r < hardcodedRegisterNames.length; r++) {
-                                for (int a = 0; a<arguments.length; a++) {
-                                    if (arguments[a].compareTo(hardcodedRegisterNames[r]) == 0) {
-                                        registerbuilder.append(hardcodedRegisterInts[r]);
-                                    }
-                                }
-                            }
-                            if (arguments.length < 2) {
-                                for (int a = 0; a<(2-arguments.length); a++) {
-                                    registerbuilder.append("0");
-                                }
-                            }
-                            address = Integer.parseInt(registerbuilder.toString());
-                        } else //(opFormats[getKeyIndex(opcode, opTable)] == 3)
-                        {
-                            //if the operand is empty
-                            if (operand.charAt(0) == '#') {
-                                int symbol_index = isInTable(operand.substring(1), SYMTAB.toArray(symtab_arr));
-                                if (symbol_index >= 0) {
-                                    target_address = ADDRTAB.get(symbol_index);
-                                } else {
-                                    target_address = Integer.parseInt(operand.substring(1));
-                                }
-                                address = target_address - program_counter;
-                                if ((0 <= target_address) && (target_address <= 4095)) {
-                                    //if it isnt an immediate numeric the computer needs to know as much (pc relative here)
-                                    //if it is, the address can just be that immediate numeric
-                                    if (symbol_index < 0) {
-                                        address = target_address;
-                                        nixbpe = "010000";
-                                    } else {
-                                        nixbpe = "010010";
-                                    }
-                                    format = 3;
-                                } else if ((4096 <= target_address) && (target_address <= 1048575) && (opcode.charAt(0) == '+')) {
-                                    nixbpe = "010001";
-                                    format = 4;
-                                } else {
-                                    System.out.println(address);
-                                    System.out.println("Error: Immediate number out of range");
-                                    System.exit(405);
-                                }
-                            }
-                            else {
-                                if (operand.charAt(0) == '@') {
-                                    operand = operand.substring(1);
-                                }
-                                int symbol_index = isInTable(operand, SYMTAB.toArray(symtab_arr));
-                                if (symbol_index >= 0) {
-                                    target_address = ADDRTAB.get(symbol_index);
-                                }
-
-                                address = target_address - program_counter;
-
-                                if (opcode.charAt(0) == '+') {
-                                    nixbpe = "110001";
-                                    format = 4;
-                                } else if ((-2048 <= address) && (address <= 2047)) {
-                                    nixbpe = "110010";
-                                    format = 3;
-                                } else if (base) {
-                                    int base_val;
-                                    //reassign to base eventually
-                                    int base_symbol_index = isInTable(base_num, SYMTAB.toArray(symtab_arr));
-                                    if (symbol_index >= 0) {
-                                        base_val = ADDRTAB.get(base_symbol_index);
-                                    } else {
-                                        base_val = Integer.parseInt(base_num);
-                                    }
-                                    //program_counter = 0;
-                                    if ((0 <= target_address - base_val) && (base_val<= 4095)) {
-                                        address = target_address - base_val;
-                                        nixbpe = "110100";
-                                        format = 3;
-                                    }
-                                } else {
-                                    System.out.println("Error: instruction addressing error.");
-                                    System.exit(409);
-                                }
-                            }
+                        if (isInTable(operand, symtab_arr) >= 0) {
+                            address = ADDRTAB.get(isInTable(operand, symtab_arr));
+                        }
+                        else {
+                            address = 0;
                         }
                     }
-                }
-                if (!operand.isEmpty()) {
-                    if (operand.charAt(0) == '#') {
-                        nixbpe = '0' + nixbpe.substring(1);
+                    if (!original_operand.isEmpty()) {
+                        if (original_operand.charAt(0) == '#') {
+                            nixbpe = '0' + nixbpe.substring(1);
+                        }
+                        if (original_operand.charAt(0) == '@') {
+                            nixbpe = nixbpe.substring(0, 1) + '0' + nixbpe.substring(2);
+                        }
                     }
-                    if (operand.charAt(0) == '@') {
-                        nixbpe = nixbpe.substring(0, 1) + '0' + nixbpe.substring(2);
+                    if (opcodeIndex >= 0) {
+                        if (indexing) {
+                            nixbpe = nixbpe.substring(0, 2) + '1' + nixbpe.substring(3);
+                        }
                     }
-                }
-                //will make this tomorrow but the idea will be comparing if (# of occurrences of , char) > (expected num of args)
-                if (opcodeIndex >= 0) {
-                    if (numargs > opExpectedArgs[opcodeIndex]) {
-                        nixbpe = nixbpe.substring(0, 2) + '1' + nixbpe.substring(3);
-                    }
-                }
 
-                if (opcode.charAt(0) == '+') {
-                    opcodeIndex = getKeyIndex(opcode.substring(1), opTable);
-                    if (opcodeIndex != -1) {
-                        String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format);
+
+                    if (operand.isEmpty()) {
+                        String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, 0, format, sicxe);
                         OBJECTCODE.add(objcode);
                         objcodelines.add(i);
-                    }
-                } else {
-                    if (opcodeIndex != -1) {
-                        String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format);
-                        OBJECTCODE.add(objcode);
-                        objcodelines.add(i);
+                    } else {
+                        if (opcodeIndex != -1) {
+                            String objcode = objcodeCreation(opKeys[opcodeIndex], nixbpe, address, format, sicxe);
+                            OBJECTCODE.add(objcode);
+                            objcodelines.add(i);
+                        }
                     }
                 }
             }
             //listing file
-            makeListingFile(line_count, objcodelines, listing_file, OBJECTCODE);
+            makeListingFile(line_count, objcodelines, listing_file, OBJECTCODE, SYMTAB, ADDRTAB, hardcodedRegisterNames, hardcodedRegisterInts);
             //object code file
             //header
             //this process is a little bloated but essentially, every single entered reference has to have a very specific padding
@@ -788,24 +1088,85 @@ public class CIS335_Ass4 {
             StringBuilder filenamebuilder = new StringBuilder(SYMTAB.getFirst());
             int filename_length = filenamebuilder.length();
             String filename = padStringBack(filenamebuilder, " ", filename_length, 6);
-            StringBuilder starting_addr_builder = new StringBuilder(Integer.toString(ADDRTAB.getFirst()));
+            StringBuilder starting_addr_builder = new StringBuilder(Integer.toHexString(ADDRTAB.getFirst()));
             int starting_addr_length = starting_addr_builder.length();
             String starting_addr = padStringFront(starting_addr_builder, "0", starting_addr_length, 6);
-            StringBuilder file_size_builder = new StringBuilder(Integer.toHexString(LOCCTR.getLast()));
+            StringBuilder file_size_builder = new StringBuilder(Integer.toHexString(LOCCTR.getLast()-LOCCTR.get(1)));
             int file_size_length = file_size_builder.length();
             String file_size = padStringFront(file_size_builder, "0", file_size_length, 6);
             String header = "H" + filename + starting_addr + file_size;
-            objcode_writer.append(header);
+            objcode_writer.println(header);
             //text
-            String text_line = "T";
-            int curr_line = 0;
-            int max_col_space = 60;
-            while (curr_line < objcodelines.size()) {
-                ArrayList<String> text_line_objs = new ArrayList<>();
-
-                curr_line++;
+            int objcode_line_count = 0;
+            for (int j = 0; j<line_count; j++) {
+                if (file_data[j][1].compareTo("RESW") == 0) {
+                    objcode_line_count++;
+                }
+                if (file_data[j][1].compareTo("RESB") == 0) {
+                    objcode_line_count++;
+                }
             }
+            objcode_line_count += OBJECTCODE.size();
+            int ten_mults = (int) Math.floor((objcode_line_count-1) / 10);
+            //int remainder = line_count % 10;
+            int current_index = 0;
+            for (int j = 0; j<ten_mults; j++) {
+                String text_line = "T";
+                int starting_location = 0;
+                String starting_objcode = "";
+                int ending_location = 0;
+                ArrayList<String> current_line_arr = new ArrayList<>();
+                for (int k = 0; k < 10; k++) {
+                    if (isInTable(Integer.toString(current_index), commentLinesArr) >= 0) {
+                        continue;
+                    }
+                    if (isInTable(Integer.toString(current_index), commentLinesArr) == -1) {
+                        current_line_arr.add(OBJECTCODE.get(current_index));
+                        current_index++;
+                    } else {
+                        current_line_arr.add("");
+                        current_index++;
+                    }
 
+                }
+                for (int k = 0; k<current_line_arr.size(); k++) {
+                    if (!current_line_arr.get(k).isEmpty()) {
+                        starting_objcode = current_line_arr.get(k);
+                        starting_location = (LOCCTR.get(isInTable(starting_objcode, OBJECTCODE.toArray(new String[0]))));
+                        break;
+                    }
+                }
+                ending_location = LOCCTR.get(current_index);
+                String size = Integer.toHexString(ending_location-starting_location);
+                StringBuilder startlocbuilder = new StringBuilder(Integer.toHexString(starting_location));
+                objcode_writer.append(text_line + padStringFront(startlocbuilder, "0", startlocbuilder.length(), 6) + size);
+                for (int k=0; k<current_line_arr.size(); k++) {
+                    objcode_writer.append(current_line_arr.get(k));
+                }
+                objcode_writer.println();
+            }
+            String text_line = "T";
+            ArrayList<String> current_line_arr = new ArrayList<>();
+            for (int j=current_index; j<objcode_line_count-1; j++) {
+                for (int k = current_index; k < 10; k++) {
+                    if (isInTable(Integer.toString(current_index), commentLinesArr) >= 0) {
+                        continue;
+                    }
+                    else if (isInTable(Integer.toString(current_index), commentLinesArr) == -1) {
+                        current_line_arr.add(OBJECTCODE.get(current_index));
+                    } else {
+                        current_line_arr.add("");
+                    }
+                }
+            }
+            ArrayList<String> line_array = new ArrayList<>();
+            int starting_index = 0;
+            //end
+            StringBuilder end_file_name = new StringBuilder(ADDRTAB.get(1));
+            int end_file_length = end_file_name.length();
+            String end_file = "E" + padStringFront(end_file_name, "0", end_file_length, 6);
+            objcode_writer.println();
+            objcode_writer.append(end_file);
 
             objcode_writer.close();
 
@@ -824,7 +1185,7 @@ public class CIS335_Ass4 {
         }
     }
 
-    private static void makeListingFile(int line_count, ArrayList<Integer> objcodelines, List<String> listing_file, ArrayList<String> OBJECTCODE) throws IOException {
+    private static void makeListingFile(int line_count, ArrayList<Integer> objcodelines, List<String> listing_file, ArrayList<String> OBJECTCODE, ArrayList<String> SYMTAB, ArrayList<Integer> ADDRTAB, String[] hardcodedRegisterNames, int[] hardcodedRegisterInts) throws IOException {
         Path intermediate_file_path = Paths.get("listing_file.txt");
         List<String> listing_file_lines = Files.readAllLines(intermediate_file_path);
         for (int i = 0; i< line_count; i++) {
@@ -840,6 +1201,12 @@ public class CIS335_Ass4 {
             if (!object_line) {
                 listing_file.add(listing_file_lines.get(i));
             }
+        }
+        for (int i = 0; i<SYMTAB.size();i++) {
+            listing_file.add(SYMTAB.get(i) + " " + ADDRTAB.get(i));
+        }
+        for (int i = 0; i<hardcodedRegisterNames.length;i++) {
+            listing_file.add(hardcodedRegisterNames[i] + " " + hardcodedRegisterInts[i]);
         }
         Files.write(intermediate_file_path, listing_file);
     }
